@@ -1,52 +1,52 @@
-import React, { useEffect, useState } from 'react';
-import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
-import { ThemeProvider as StyledThemeProvider } from 'styled-components';
-import CssBaseline from '@mui/material/CssBaseline';
-import { Provider } from 'react-redux';
-import { store } from './store';
-import { GlobalStyles } from './styles/globalStyles';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { ThemeProvider } from './providers/ThemeProvider';
+import { AuthProvider } from './contexts/AuthContext';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { LandingPage } from './components/LandingPage';
 import { AppContent } from './components/AppContent';
-import { lightTheme, darkTheme } from './styles/theme';
-import { useSelector } from 'react-redux';
-import { RootState } from './store';
-
-const ThemeWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const themeMode = useSelector((state: RootState) => state.theme.mode);
-  const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>('light');
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e: MediaQueryListEvent) => {
-      setSystemTheme(e.matches ? 'dark' : 'light');
-    };
-
-    setSystemTheme(mediaQuery.matches ? 'dark' : 'light');
-    mediaQuery.addEventListener('change', handleChange);
-
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
-
-  const currentTheme = themeMode === 'system' ? (systemTheme === 'light' ? lightTheme : darkTheme) : 
-    themeMode === 'light' ? lightTheme : darkTheme;
-
-  return (
-    <MuiThemeProvider theme={currentTheme}>
-      <StyledThemeProvider theme={currentTheme}>
-        <CssBaseline />
-        <GlobalStyles />
-        {children}
-      </StyledThemeProvider>
-    </MuiThemeProvider>
-  );
-};
+import { SignUp } from './components/auth/SignUp';
+import { Login } from './components/auth/Login';
+import { ResetPassword } from './components/auth/ResetPassword';
+import { UserProfile } from './components/user/UserProfile';
+import { NewProject } from './components/projects/NewProject';
+import { AuthCallback } from './components/auth/AuthCallback';
 
 const App: React.FC = () => {
   return (
-    <Provider store={store}>
-      <ThemeWrapper>
-        <AppContent />
-      </ThemeWrapper>
-    </Provider>
+    <ThemeProvider>
+      <AuthProvider>
+        <Router>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/auth/signup" element={<SignUp />} />
+            <Route path="/auth/login" element={<Login />} />
+            <Route path="/auth/reset-password" element={<ResetPassword />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route path="/app/new-project" element={<NewProject />} />
+
+            {/* Protected routes */}
+            <Route
+              path="/app/*"
+              element={
+                <ProtectedRoute>
+                  <AppContent />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <UserProfile />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
   );
 };
 
