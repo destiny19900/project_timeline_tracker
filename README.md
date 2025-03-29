@@ -1,10 +1,10 @@
-# Futuristic Project Timeline Tracker
+# Project Timeline Tracker
 
-A modern, futuristic web application for managing and tracking project progress through dynamic timelines. Built with React, TypeScript, and Material-UI.
+A modern, web application for managing and tracking project progress through dynamic timelines. Built with React, TypeScript, and Material-UI.
 
 ## Features
 
-- 🎨 Futuristic UI with smooth animations
+- 🎨 UI with smooth animations
 - 🌓 Dark/Light theme toggle
 - 📱 Fully responsive design
 - 📊 Interactive timeline visualization
