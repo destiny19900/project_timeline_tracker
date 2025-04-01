@@ -12,6 +12,11 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Stack,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import AnimatedBackground from '../AnimatedBackground';
@@ -23,15 +28,17 @@ export const NewProject: React.FC = () => {
     description: '',
     startDate: '',
     endDate: '',
+    priority: 'medium',
   });
   const [error, setError] = useState<string | null>(null);
   const [showSignUpPrompt, setShowSignUpPrompt] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | { name?: string; value: unknown }>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name as string]: value,
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,9 +46,9 @@ export const NewProject: React.FC = () => {
     setError(null);
 
     try {
-      // TODO: Implement temporary project creation
-      // For now, we'll just show the signup prompt
-      setShowSignUpPrompt(true);
+      // TODO: Implement project creation logic
+      console.log('Project data:', formData);
+      navigate('/app/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create project');
     }
@@ -99,68 +106,66 @@ export const NewProject: React.FC = () => {
             )}
 
             <form onSubmit={handleSubmit}>
-              <TextField
-                fullWidth
-                label="Project Name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                margin="normal"
-                required
-              />
-              <TextField
-                fullWidth
-                label="Description"
-                name="description"
-                multiline
-                rows={4}
-                value={formData.description}
-                onChange={handleChange}
-                margin="normal"
-                required
-              />
-              <TextField
-                fullWidth
-                label="Start Date"
-                name="startDate"
-                type="date"
-                value={formData.startDate}
-                onChange={handleChange}
-                margin="normal"
-                required
-                InputLabelProps={{ shrink: true }}
-              />
-              <TextField
-                fullWidth
-                label="End Date"
-                name="endDate"
-                type="date"
-                value={formData.endDate}
-                onChange={handleChange}
-                margin="normal"
-                required
-                InputLabelProps={{ shrink: true }}
-              />
-              
-              <Button
-                type="submit"
-                fullWidth
-                variant="contained"
-                size="large"
-                sx={{
-                  mt: 3,
-                  mb: 2,
-                  py: 1.5,
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
-                  '&:hover': {
-                    background: 'linear-gradient(45deg, #2563eb, #7c3aed)',
-                  },
-                }}
-              >
-                Create Project
-              </Button>
+              <Stack spacing={3}>
+                <TextField
+                  required
+                  fullWidth
+                  label="Project Name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                />
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={4}
+                  label="Description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                />
+                <TextField
+                  required
+                  fullWidth
+                  type="date"
+                  label="Start Date"
+                  name="startDate"
+                  value={formData.startDate}
+                  onChange={handleChange}
+                  InputLabelProps={{ shrink: true }}
+                />
+                <TextField
+                  required
+                  fullWidth
+                  type="date"
+                  label="End Date"
+                  name="endDate"
+                  value={formData.endDate}
+                  onChange={handleChange}
+                  InputLabelProps={{ shrink: true }}
+                />
+                <FormControl fullWidth>
+                  <InputLabel>Priority</InputLabel>
+                  <Select
+                    name="priority"
+                    value={formData.priority}
+                    label="Priority"
+                    onChange={handleChange}
+                  >
+                    <MenuItem value="low">Low</MenuItem>
+                    <MenuItem value="medium">Medium</MenuItem>
+                    <MenuItem value="high">High</MenuItem>
+                  </Select>
+                </FormControl>
+                <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+                  <Button variant="outlined" onClick={() => navigate('/app/dashboard')}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" variant="contained">
+                    Create Project
+                  </Button>
+                </Box>
+              </Stack>
             </form>
           </Paper>
         </motion.div>

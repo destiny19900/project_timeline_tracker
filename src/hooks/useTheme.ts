@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../store';
 import { setThemeMode } from '../store/slices/themeSlice';
+import { useContext } from 'react';
+import { ThemeContext } from '../providers/ThemeProvider';
 
 export const useTheme = () => {
   const dispatch = useDispatch();
@@ -32,4 +34,12 @@ export const useTheme = () => {
     toggleTheme,
     systemTheme,
   };
+};
+
+export const useThemeContext = () => {
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error('useThemeContext must be used within a ThemeProvider');
+  }
+  return context;
 }; 

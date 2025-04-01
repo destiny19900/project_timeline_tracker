@@ -1,74 +1,121 @@
 import React, { useState } from 'react';
+import { styled } from '@mui/material/styles';
 import {
   Box,
   Drawer,
+  AppBar,
+  Toolbar,
   List,
-  ListItem,
+  Typography,
+  Divider,
+  IconButton,
+  ListItemButton,
   ListItemIcon,
   ListItemText,
-  IconButton,
+  useMediaQuery,
   useTheme,
-  styled,
-  Toolbar,
-  AppBar,
-  Typography,
+  Tooltip,
   Avatar,
   Menu,
   MenuItem,
+  InputBase,
+  Badge,
 } from '@mui/material';
-import {
-  Dashboard as DashboardIcon,
-  Assignment as TasksIcon,
-  Group as TeamIcon,
-  Description as DocumentsIcon,
-  Person as ClientsIcon,
-  Menu as MenuIcon,
-  Add as AddIcon,
-  Search as SearchIcon,
-  Notifications as NotificationsIcon,
-  Settings as SettingsIcon,
-} from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import MenuIcon from '@mui/icons-material/Menu';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import PeopleIcon from '@mui/icons-material/People';
+import SettingsIcon from '@mui/icons-material/Settings';
+import LightModeIcon from '@mui/icons-material/LightMode';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import SearchIcon from '@mui/icons-material/Search';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import AddIcon from '@mui/icons-material/Add';
+import { useThemeContext } from '../../hooks/useTheme';
 import { useAuth } from '../../hooks/useAuth';
 
 const drawerWidth = 240;
 
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   open?: boolean;
-}>(({ theme, open }) => ({
+  isMobile?: boolean;
+}>(({ theme, open, isMobile }) => ({
   flexGrow: 1,
   padding: theme.spacing(3),
   transition: theme.transitions.create('margin', {
     easing: theme.transitions.easing.sharp,
     duration: theme.transitions.duration.leavingScreen,
   }),
-  marginLeft: 0,
+  marginLeft: isMobile ? 0 : `-${drawerWidth}px`,
   ...(open && {
     transition: theme.transitions.create('margin', {
       easing: theme.transitions.easing.easeOut,
       duration: theme.transitions.duration.enteringScreen,
     }),
-    marginLeft: drawerWidth,
+    marginLeft: 0,
   }),
+  backgroundColor: theme.palette.background.default,
 }));
 
-interface DashboardLayoutProps {
-  children: React.ReactNode;
-}
+const AppBarStyled = styled(AppBar, {
+  shouldForwardProp: (prop) => prop !== 'open',
+})<{ open?: boolean }>(({ theme, open }) => ({
+  transition: theme.transitions.create(['margin', 'width'], {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.leavingScreen,
+  }),
+  ...(open && {
+    width: `calc(100% - ${drawerWidth}px)`,
+    marginLeft: `${drawerWidth}px`,
+    transition: theme.transitions.create(['margin', 'width'], {
+      easing: theme.transitions.easing.easeOut,
+      duration: theme.transitions.duration.enteringScreen,
+    }),
+  }),
+  backgroundColor: theme.palette.background.paper,
+  color: theme.palette.text.primary,
+  boxShadow: 'none',
+}));
+
+const DrawerHeader = styled('div')(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  padding: theme.spacing(0, 1),
+  ...theme.mixins.toolbar,
+  justifyContent: 'flex-end',
+  borderBottom: `1px solid ${theme.palette.divider}`,
+}));
+
+const SearchInput = styled(InputBase)(({ theme }) => ({
+  color: 'inherit',
+  backgroundColor: theme.palette.background.default,
+  borderRadius: theme.shape.borderRadius,
+  '& .MuiInputBase-input': {
+    padding: theme.spacing(1, 1, 1, 0),
+    paddingLeft: `calc(1em + ${theme.spacing(4)})`,
+    width: '100%',
+    [theme.breakpoints.up('md')]: {
+      width: '20ch',
+    },
+  },
+}));
 
 const menuItems = [
-  { text: 'Boards', icon: <DashboardIcon />, path: '/app' },
-  { text: 'My Tasks', icon: <TasksIcon />, path: '/app/tasks' },
-  { text: 'Team Space', icon: <TeamIcon />, path: '/app/team' },
-  { text: 'Documents', icon: <DocumentsIcon />, path: '/app/documents' },
-  { text: 'Clients', icon: <ClientsIcon />, path: '/app/clients' },
+  { text: 'Dashboard', icon: <DashboardIcon />, path: '/app/dashboard' },
+  { text: 'Projects', icon: <AssignmentIcon />, path: '/app/projects' },
+  { text: 'Team', icon: <PeopleIcon />, path: '/app/team' },
+  { text: 'Settings', icon: <SettingsIcon />, path: '/app/settings' },
 ];
 
-export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
+export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [open, setOpen] = useState(true);
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { mode, toggleTheme } = useThemeContext();
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const [open, setOpen] = useState(true);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const handleDrawerToggle = () => {
@@ -79,32 +126,30 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     setAnchorEl(event.currentTarget);
   };
 
-  const handleProfileMenuClose = () => {
+  const handleMenuClose = () => {
     setAnchorEl(null);
   };
 
   const handleLogout = async () => {
+    handleMenuClose();
     await signOut();
     navigate('/');
   };
 
+  // Close drawer by default on mobile
+  React.useEffect(() => {
+    if (isMobile) {
+      setOpen(false);
+    }
+  }, [isMobile]);
+
   return (
     <Box sx={{ display: 'flex' }}>
-      <AppBar
-        position="fixed"
-        sx={{
-          width: open ? `calc(100% - ${drawerWidth}px)` : '100%',
-          ml: open ? `${drawerWidth}px` : 0,
-          bgcolor: 'background.paper',
-          borderBottom: 1,
-          borderColor: 'divider',
-        }}
-        elevation={0}
-      >
-        <Toolbar>
+      <AppBarStyled position="fixed" open={open && !isMobile}>
+        <Toolbar sx={{ gap: 2 }}>
           <IconButton
             color="inherit"
-            aria-label="open drawer"
+            aria-label="toggle drawer"
             onClick={handleDrawerToggle}
             edge="start"
             sx={{ mr: 2 }}
@@ -112,41 +157,74 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
             <MenuIcon />
           </IconButton>
 
-          <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
-            <IconButton color="primary" sx={{ bgcolor: 'primary.light', '&:hover': { bgcolor: 'primary.main' } }}>
-              <AddIcon />
-            </IconButton>
-            <Box sx={{ position: 'relative', width: '300px' }}>
-              <IconButton sx={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)' }}>
-                <SearchIcon />
-              </IconButton>
-              <input
-                placeholder="Search..."
-                style={{
-                  width: '100%',
-                  padding: '8px 40px',
-                  borderRadius: '20px',
-                  border: `1px solid ${theme.palette.divider}`,
-                  backgroundColor: theme.palette.background.default,
-                  color: theme.palette.text.primary,
-                }}
-              />
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 2,
+            width: '100%',
+            justifyContent: 'space-between'
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+              <Tooltip title="Create New">
+                <IconButton 
+                  color="primary" 
+                  sx={{ 
+                    bgcolor: 'primary.light', 
+                    '&:hover': { bgcolor: 'primary.main' },
+                    display: { xs: 'none', sm: 'flex' }
+                  }}
+                >
+                  <AddIcon />
+                </IconButton>
+              </Tooltip>
+              <Box sx={{ 
+                position: 'relative',
+                width: { xs: '100%', sm: '300px' },
+                maxWidth: '500px'
+              }}>
+                <IconButton 
+                  sx={{ 
+                    position: 'absolute', 
+                    left: 8, 
+                    top: '50%', 
+                    transform: 'translateY(-50%)',
+                    color: 'text.secondary'
+                  }}
+                >
+                  <SearchIcon />
+                </IconButton>
+                <SearchInput placeholder="Search..." />
+              </Box>
+            </Box>
+
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 } }}>
+              <Tooltip title="Notifications">
+                <IconButton sx={{ color: 'text.primary' }}>
+                  <Badge badgeContent={4} color="error">
+                    <NotificationsIcon />
+                  </Badge>
+                </IconButton>
+              </Tooltip>
+              <Tooltip title={mode === 'dark' ? 'Light Mode' : 'Dark Mode'}>
+                <IconButton onClick={toggleTheme} sx={{ color: 'text.primary' }}>
+                  {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Profile">
+                <IconButton 
+                  onClick={handleProfileMenuOpen}
+                  sx={{ 
+                    color: 'text.primary',
+                    ml: { xs: 0, sm: 1 }
+                  }}
+                >
+                  <Avatar sx={{ width: 32, height: 32 }} />
+                </IconButton>
+              </Tooltip>
             </Box>
           </Box>
-
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <IconButton>
-              <NotificationsIcon />
-            </IconButton>
-            <IconButton>
-              <SettingsIcon />
-            </IconButton>
-            <IconButton onClick={handleProfileMenuOpen}>
-              <Avatar sx={{ width: 32, height: 32 }} />
-            </IconButton>
-          </Box>
         </Toolbar>
-      </AppBar>
+      </AppBarStyled>
 
       <Drawer
         sx={{
@@ -155,56 +233,71 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             boxSizing: 'border-box',
-            bgcolor: 'background.paper',
-            borderRight: 1,
-            borderColor: 'divider',
+            borderRight: `1px solid ${theme.palette.divider}`,
           },
         }}
-        variant="persistent"
+        variant={isMobile ? 'temporary' : 'persistent'}
         anchor="left"
         open={open}
+        onClose={handleDrawerToggle}
       >
-        <Toolbar>
-          <Typography variant="h6" noWrap component="div">
-            FourAxis
+        <DrawerHeader>
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, ml: 2 }}>
+            Task App
           </Typography>
-        </Toolbar>
+          <IconButton onClick={handleDrawerToggle}>
+            <ChevronLeftIcon />
+          </IconButton>
+        </DrawerHeader>
+        <Divider />
         <List>
           {menuItems.map((item) => (
-            <ListItem
-              button
-              key={item.text}
-              onClick={() => navigate(item.path)}
-              sx={{
-                mb: 1,
-                mx: 1,
-                borderRadius: 1,
-                '&:hover': {
-                  bgcolor: 'action.hover',
-                },
-              }}
-            >
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} />
-            </ListItem>
+            <Link to={item.path} key={item.text} style={{ textDecoration: 'none', color: 'inherit' }}>
+              <ListItemButton
+                selected={window.location.pathname === item.path}
+                sx={{
+                  '&.Mui-selected': {
+                    backgroundColor: 'primary.main',
+                    color: 'primary.contrastText',
+                    '&:hover': {
+                      backgroundColor: 'primary.dark',
+                    },
+                    '& .MuiListItemIcon-root': {
+                      color: 'primary.contrastText',
+                    },
+                  },
+                }}
+              >
+                <ListItemIcon>{item.icon}</ListItemIcon>
+                <ListItemText primary={item.text} />
+              </ListItemButton>
+            </Link>
           ))}
         </List>
       </Drawer>
 
+      <Main open={open} isMobile={isMobile}>
+        <DrawerHeader />
+        {children}
+      </Main>
+
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
-        onClose={handleProfileMenuClose}
-        onClick={handleProfileMenuClose}
+        onClose={handleMenuClose}
+        PaperProps={{
+          sx: {
+            mt: 1.5,
+            minWidth: 180,
+            borderRadius: 1,
+          },
+        }}
       >
-        <MenuItem onClick={() => navigate('/profile')}>Profile</MenuItem>
+        <MenuItem onClick={() => { handleMenuClose(); navigate('/profile'); }}>
+          Profile
+        </MenuItem>
         <MenuItem onClick={handleLogout}>Logout</MenuItem>
       </Menu>
-
-      <Main open={open}>
-        <Toolbar /> {/* Spacer for AppBar */}
-        {children}
-      </Main>
     </Box>
   );
 }; 
