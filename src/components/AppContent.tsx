@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Box, Container, AppBar, Toolbar, Button, Dialog, DialogTitle, DialogContent, DialogActions, Typography, IconButton } from '@mui/material';
-import { Add as AddIcon, AutoAwesome as AIIcon, Edit as EditIcon } from '@mui/icons-material';
+import { Box, Container, AppBar, Toolbar, Button, Dialog, DialogTitle, DialogContent, DialogActions, Typography, IconButton, Menu, MenuItem, Avatar } from '@mui/material';
+import { Add as AddIcon, AutoAwesome as AIIcon, Edit as EditIcon, AccountCircle } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../hooks/useTheme';
 import { useProjects } from '../hooks/useProjects';
@@ -9,12 +9,24 @@ import { ProjectTimeline } from './ProjectTimeline';
 import { NewProjectForm } from './NewProjectForm';
 import AnimatedBackground from './AnimatedBackground';
 import AnimatedLogo from './AnimatedLogo';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import { supabase } from '../lib/supabase';
+import { Project, Task } from '../types/project';
+import { useDispatch } from 'react-redux';
+import { setProjects } from '../store/slices/projectSlice';
 
 export const AppContent: React.FC = () => {
   const { themeMode } = useTheme();
   const { projects, activeProject, createProject, updateTaskStatus, selectProject } = useProjects();
   const [isNewProjectFormOpen, setIsNewProjectFormOpen] = useState(false);
   const [isProjectTypeDialogOpen, setIsProjectTypeDialogOpen] = useState(false);
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { user, signOut } = useAuth();
+  const [openDialog, setOpenDialog] = useState(false);
+  const [newProjectTitle, setNewProjectTitle] = useState('');
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const handleCreateProject = async (project: any) => {
     try {
@@ -37,6 +49,24 @@ export const AppContent: React.FC = () => {
 
   const handleNewProjectClick = () => {
     setIsProjectTypeDialogOpen(true);
+  };
+
+  const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+    handleClose();
   };
 
   return (
@@ -85,6 +115,34 @@ export const AppContent: React.FC = () => {
                     New Project
                   </Button>
                 </motion.div>
+                <IconButton
+                  size="large"
+                  aria-label="account of current user"
+                  aria-controls="menu-appbar"
+                  aria-haspopup="true"
+                  onClick={handleMenu}
+                  color="inherit"
+                >
+                  <AccountCircle />
+                </IconButton>
+                <Menu
+                  id="menu-appbar"
+                  anchorEl={anchorEl}
+                  anchorOrigin={{
+                    vertical: 'top',
+                    horizontal: 'right',
+                  }}
+                  keepMounted
+                  transformOrigin={{
+                    vertical: 'top',
+                    horizontal: 'right',
+                  }}
+                  open={Boolean(anchorEl)}
+                  onClose={handleClose}
+                >
+                  <MenuItem onClick={handleClose}>Profile</MenuItem>
+                  <MenuItem onClick={handleLogout}>Logout</MenuItem>
+                </Menu>
               </Box>
             </Toolbar>
           </Container>

@@ -1,8 +1,8 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './providers/ThemeProvider';
 import { AuthProvider } from './contexts/AuthContext';
-import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { LandingPage } from './components/LandingPage';
 import { AppContent } from './components/AppContent';
 import { SignUp } from './components/auth/SignUp';
@@ -11,6 +11,8 @@ import { ResetPassword } from './components/auth/ResetPassword';
 import { UserProfile } from './components/user/UserProfile';
 import { NewProject } from './components/projects/NewProject';
 import { AuthCallback } from './components/auth/AuthCallback';
+import { DashboardLayout } from './components/layout/DashboardLayout';
+import { DashboardContent } from './components/dashboard/DashboardContent';
 
 const App: React.FC = () => {
   return (
@@ -31,7 +33,17 @@ const App: React.FC = () => {
               path="/app/*"
               element={
                 <ProtectedRoute>
-                  <AppContent />
+                  <DashboardLayout>
+                    <Routes>
+                      <Route path="/" element={<DashboardContent />} />
+                      <Route path="/tasks" element={<DashboardContent />} />
+                      <Route path="/team" element={<DashboardContent />} />
+                      <Route path="/documents" element={<DashboardContent />} />
+                      <Route path="/clients" element={<DashboardContent />} />
+                      {/* Redirect any unknown paths to dashboard */}
+                      <Route path="*" element={<Navigate to="/app" replace />} />
+                    </Routes>
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
@@ -43,6 +55,9 @@ const App: React.FC = () => {
                 </ProtectedRoute>
               }
             />
+
+            {/* Redirect any unknown paths to home */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>
       </AuthProvider>

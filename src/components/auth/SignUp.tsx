@@ -11,7 +11,7 @@ import {
   Link,
 } from '@mui/material';
 import { motion } from 'framer-motion';
-import { supabase } from '../../lib/supabase';
+import { supabase, supabaseAdmin } from '../../lib/supabase';
 import AnimatedBackground from '../AnimatedBackground';
 
 export const SignUp: React.FC = () => {
@@ -23,7 +23,6 @@ export const SignUp: React.FC = () => {
     confirmPassword: '',
   });
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -36,7 +35,6 @@ export const SignUp: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setSuccess(null);
     setLoading(true);
 
     const { email, password, confirmPassword, username } = formData;
@@ -61,7 +59,6 @@ export const SignUp: React.FC = () => {
       });
 
       if (signUpError) {
-        // Handle specific error cases
         if (signUpError.message.includes('already registered')) {
           setError('This email is already registered. Please try logging in instead.');
         } else if (signUpError.message.includes('password')) {
@@ -73,28 +70,48 @@ export const SignUp: React.FC = () => {
       }
 
       if (authData.user) {
-        // Create user profile in the users table
-        const { error: profileError } = await supabase
+        // Create user profile in the users table using admin client
+        const { error: profileError } = await supabaseAdmin
           .from('users')
-          .insert([
+          .upsert([
             {
               id: authData.user.id,
-              username,
+              username: username || email.split('@')[0],
               email,
               created_at: new Date().toISOString(),
             },
-          ]);
+          ], {
+            onConflict: 'id',
+          });
 
         if (profileError) {
-          // If profile creation fails, we should still show the email confirmation message
           console.error('Profile creation error:', profileError);
+          // Log the error but don't block the user from proceeding
         }
 
-        // Show success message about email confirmation
-        setSuccess(
-          'Account created successfully! Please check your email to confirm your registration. ' +
-          'After confirming, you can log in to your account.'
-        );
+        // Check if there's a temporary project to be saved
+        const tempProject = localStorage.getItem('tempProject');
+        if (tempProject) {
+          const project = JSON.parse(tempProject);
+          const { error: projectError } = await supabaseAdmin
+            .from('projects')
+            .insert([
+              {
+                ...project,
+                user_id: authData.user.id,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+            ]);
+
+          if (projectError) {
+            console.error('Project migration error:', projectError);
+          }
+          localStorage.removeItem('tempProject');
+        }
+
+        // Navigate to dashboard
+        navigate('/app');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign up');
@@ -143,12 +160,6 @@ export const SignUp: React.FC = () => {
               </Alert>
             )}
 
-            {success && (
-              <Alert severity="success" sx={{ mb: 2 }}>
-                {success}
-              </Alert>
-            )}
-
             <form onSubmit={handleSubmit}>
               <TextField
                 fullWidth
@@ -159,7 +170,7 @@ export const SignUp: React.FC = () => {
                 onChange={handleChange}
                 margin="normal"
                 required
-                helperText="We'll send you a confirmation email"
+                helperText="We'll send you a verification email"
               />
               <TextField
                 fullWidth
