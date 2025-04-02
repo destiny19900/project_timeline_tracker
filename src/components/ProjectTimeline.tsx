@@ -1,88 +1,75 @@
 import React from 'react';
-import { Box, Typography, LinearProgress, Paper } from '@mui/material';
-import { motion } from 'framer-motion';
-import { TaskCard } from './TaskCard';
-import { Project, Task } from '../store/slices/projectSlice';
+import { Box, Typography, Paper, Checkbox, Grid, useTheme } from '@mui/material';
+import { styled } from '@mui/material/styles';
 
-interface ProjectTimelineProps {
-  project: Project;
-  onTaskToggle: (taskId: string, completed: boolean) => void;
-}
+const TaskCard = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(2),
+  display: 'flex',
+  flexDirection: 'column',
+  gap: theme.spacing(1),
+  background: theme.palette.mode === 'dark'
+    ? 'linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)'
+    : 'linear-gradient(145deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%)',
+  backdropFilter: 'blur(10px)',
+  border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+  width: '100%',
+}));
 
-export const ProjectTimeline: React.FC<ProjectTimelineProps> = ({
+export const ProjectTimeline: React.FC<{ project: any; onTaskToggle: (taskId: string, completed: boolean) => void }> = ({
   project,
   onTaskToggle,
 }) => {
-  const calculateProgress = (tasks: Task[]): number => {
-    if (tasks.length === 0) return 0;
-
-    const completedTasks = tasks.reduce((acc, task) => {
-      const taskProgress = task.completed ? 1 : 0;
-      const subtaskProgress = task.subtasks
-        ? calculateProgress(task.subtasks) / task.subtasks.length
-        : 0;
-      return acc + (taskProgress + subtaskProgress) / 2;
-    }, 0);
-
-    return (completedTasks / tasks.length) * 100;
-  };
-
-  const progress = calculateProgress(project.tasks);
+  const theme = useTheme();
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-    >
-      <Paper
-        elevation={0}
-        sx={{
-          p: 3,
-          mb: 3,
-          backgroundColor: 'background.paper',
-          borderRadius: 2,
-        }}
-      >
-        <Typography variant="h4" gutterBottom>
-          {project.title}
-        </Typography>
-        <Typography variant="body1" color="text.secondary" paragraph>
-          {project.description}
-        </Typography>
-        <Box sx={{ mb: 3 }}>
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-            <Typography variant="body2" color="text.secondary">
-              Project Progress
-            </Typography>
-            <Typography variant="body2" color="primary">
-              {Math.round(progress)}%
-            </Typography>
-          </Box>
-          <LinearProgress
-            variant="determinate"
-            value={progress}
-            sx={{
-              height: 8,
-              borderRadius: 4,
-              backgroundColor: 'background.default',
-              '& .MuiLinearProgress-bar': {
-                borderRadius: 4,
-              },
-            }}
-          />
-        </Box>
-      </Paper>
-
-      <Box>
-        {project.tasks.map((task) => (
-          <TaskCard
-            key={task.id}
-            task={task}
-            onToggleComplete={onTaskToggle}
-          />
+    <Box sx={{ width: '100%' }}>
+      <Typography variant="h4" gutterBottom>
+        {project.name} Timeline
+      </Typography>
+      
+      <Grid container spacing={3} sx={{ width: '100%', margin: 0 }}>
+        {project.tasks?.map((task: any) => (
+          <Grid item xs={12} key={task.id} sx={{ width: '100%', padding: { xs: 0, sm: 1 } }}>
+            <TaskCard sx={{ 
+              borderRadius: { xs: 0, sm: 1 },
+              mb: { xs: 2, sm: 0 },
+            }}>
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                <Checkbox
+                  checked={task.completed}
+                  onChange={(e) => onTaskToggle(task.id, e.target.checked)}
+                  sx={{ mt: 0.5 }}
+                />
+                <Box sx={{ flex: 1 }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      textDecoration: task.completed ? 'line-through' : 'none',
+                      color: task.completed ? 'text.secondary' : 'text.primary',
+                    }}
+                  >
+                    {task.title}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Due: {new Date(task.dueDate).toLocaleDateString()}
+                  </Typography>
+                  {task.description && (
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        mt: 1,
+                        color: task.completed ? 'text.secondary' : 'text.primary',
+                      }}
+                    >
+                      {task.description}
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
+            </TaskCard>
+          </Grid>
         ))}
-      </Box>
-    </motion.div>
+      </Grid>
+    </Box>
   );
 }; 

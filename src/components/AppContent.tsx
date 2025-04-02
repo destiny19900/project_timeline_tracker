@@ -1,31 +1,28 @@
 import React, { useState } from 'react';
-import { Box, Container, AppBar, Toolbar, Button, Dialog, DialogTitle, DialogContent, DialogActions, Typography, IconButton, Menu, MenuItem, Avatar } from '@mui/material';
-import { Add as AddIcon, AutoAwesome as AIIcon, Edit as EditIcon, AccountCircle } from '@mui/icons-material';
+import { Box, Container, AppBar, Toolbar, Button, Dialog, DialogTitle, DialogContent, DialogActions, Typography, IconButton, Menu, MenuItem, useTheme, useMediaQuery, Drawer } from '@mui/material';
+import { Add as AddIcon, AutoAwesome as AIIcon, Edit as EditIcon, AccountCircle, Menu as MenuIcon } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useTheme } from '../hooks/useTheme';
+import { useTheme as useCustomTheme } from '../hooks/useTheme';
 import { useProjects } from '../hooks/useProjects';
 import ThemeToggle from './ThemeToggle';
 import { ProjectTimeline } from './ProjectTimeline';
 import { NewProjectForm } from './NewProjectForm';
+import { Sidebar } from './Sidebar';
 import AnimatedBackground from './AnimatedBackground';
 import AnimatedLogo from './AnimatedLogo';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { supabase } from '../lib/supabase';
-import { Project, Task } from '../types/project';
-import { useDispatch } from 'react-redux';
-import { setProjects } from '../store/slices/projectSlice';
 
 export const AppContent: React.FC = () => {
-  const { themeMode } = useTheme();
-  const { projects, activeProject, createProject, updateTaskStatus, selectProject } = useProjects();
+  const { themeMode } = useCustomTheme();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { activeProject, createProject, updateTaskStatus } = useProjects();
   const [isNewProjectFormOpen, setIsNewProjectFormOpen] = useState(false);
   const [isProjectTypeDialogOpen, setIsProjectTypeDialogOpen] = useState(false);
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const { user, signOut } = useAuth();
-  const [openDialog, setOpenDialog] = useState(false);
-  const [newProjectTitle, setNewProjectTitle] = useState('');
+  const { signOut } = useAuth();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const handleCreateProject = async (project: any) => {
@@ -70,158 +67,229 @@ export const AppContent: React.FC = () => {
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       <AnimatedBackground />
       
-      <motion.div
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ type: 'spring', stiffness: 100, damping: 20 }}
-      >
-        <AppBar 
-          position="static" 
-          elevation={0}
+      {/* Sidebar - Only permanent on desktop */}
+      {!isMobile && (
+        <Drawer
+          variant="permanent"
           sx={{
-            background: 'transparent',
-            backdropFilter: 'blur(10px)',
-            borderBottom: '1px solid',
-            borderColor: 'divider',
-            height: '64px',
+            width: 240,
+            flexShrink: 0,
+            '& .MuiDrawer-paper': {
+              width: 240,
+              boxSizing: 'border-box',
+              background: theme.palette.mode === 'dark' 
+                ? 'linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)'
+                : 'linear-gradient(145deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%)',
+              backdropFilter: 'blur(10px)',
+              border: 'none',
+              borderRight: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+            },
           }}
         >
-          <Container maxWidth="lg">
-            <Toolbar sx={{ justifyContent: 'space-between', height: '100%' }}>
-              <AnimatedLogo />
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <ThemeToggle />
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={handleNewProjectClick}
-                    sx={{
-                      borderRadius: 2,
-                      textTransform: 'none',
-                      px: 3,
-                      background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
-                      '&:hover': {
-                        background: 'linear-gradient(45deg, #2563eb, #7c3aed)',
-                      },
-                    }}
-                  >
-                    New Project
-                  </Button>
-                </motion.div>
-                <IconButton
-                  size="large"
-                  aria-label="account of current user"
-                  aria-controls="menu-appbar"
-                  aria-haspopup="true"
-                  onClick={handleMenu}
-                  color="inherit"
-                >
-                  <AccountCircle />
-                </IconButton>
-                <Menu
-                  id="menu-appbar"
-                  anchorEl={anchorEl}
-                  anchorOrigin={{
-                    vertical: 'top',
-                    horizontal: 'right',
-                  }}
-                  keepMounted
-                  transformOrigin={{
-                    vertical: 'top',
-                    horizontal: 'right',
-                  }}
-                  open={Boolean(anchorEl)}
-                  onClose={handleClose}
-                >
-                  <MenuItem onClick={handleClose}>Profile</MenuItem>
-                  <MenuItem onClick={handleLogout}>Logout</MenuItem>
-                </Menu>
-              </Box>
-            </Toolbar>
-          </Container>
-        </AppBar>
-      </motion.div>
+          <Sidebar />
+        </Drawer>
+      )}
 
-      <Container maxWidth="lg" sx={{ flex: 1, py: 4 }}>
-        <AnimatePresence mode="wait">
-          {activeProject ? (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <ProjectTimeline
-                project={activeProject}
-                onTaskToggle={handleTaskToggle}
-              />
-            </motion.div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minHeight: '60vh',
-                  textAlign: 'center',
-                  gap: 3,
+      {/* Mobile Drawer */}
+      {isMobile && (
+        <Drawer
+          variant="temporary"
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          ModalProps={{
+            keepMounted: true,
+          }}
+          sx={{
+            display: { xs: 'block', md: 'none' },
+            '& .MuiDrawer-paper': {
+              width: 240,
+              background: theme.palette.mode === 'dark' 
+                ? 'linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)'
+                : 'linear-gradient(145deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%)',
+              backdropFilter: 'blur(10px)',
+              border: 'none',
+            },
+          }}
+        >
+          <Sidebar />
+        </Drawer>
+      )}
+      
+      <Box component="main" sx={{ 
+        flexGrow: 1, 
+        p: 3, 
+        width: '100%',
+        ml: { xs: 0, md: `240px` } 
+      }}>
+        <AppBar 
+          position="fixed"
+          elevation={0}
+          sx={{
+            background: theme.palette.mode === 'dark' 
+              ? 'rgba(17, 25, 40, 0.75)'
+              : 'rgba(255, 255, 255, 0.75)',
+            backdropFilter: 'blur(16px)',
+            borderBottom: 1,
+            borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+            height: '64px',
+            borderRadius: 0,
+            left: { xs: 0, md: '240px' },
+            right: 0,
+            width: { xs: '100%', md: 'calc(100% - 240px)' },
+            zIndex: 1100
+          }}
+        >
+          <Toolbar sx={{ 
+            justifyContent: 'space-between', 
+            height: '100%',
+            px: 2
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <IconButton
+                color="inherit"
+                aria-label="open drawer"
+                edge="start"
+                onClick={() => setSidebarOpen(true)}
+                sx={{ 
+                  display: { xs: 'inline-flex', md: 'none' }
                 }}
               >
-                <Typography 
-                  variant="h4" 
-                  gutterBottom
+                <MenuIcon />
+              </IconButton>
+              <AnimatedLogo />
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <ThemeToggle />
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={handleNewProjectClick}
                   sx={{
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    px: 3,
                     background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    fontWeight: 700,
+                    '&:hover': {
+                      background: 'linear-gradient(45deg, #2563eb, #7c3aed)',
+                    },
                   }}
                 >
-                  Welcome to Project Timeline Tracker
-                </Typography>
-                <Typography variant="body1" color="text.secondary" paragraph>
-                  Create a new project to get started
-                </Typography>
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  New Project
+                </Button>
+              </motion.div>
+              <IconButton
+                size="large"
+                aria-label="account of current user"
+                aria-controls="menu-appbar"
+                aria-haspopup="true"
+                onClick={handleMenu}
+                color="inherit"
+              >
+                <AccountCircle />
+              </IconButton>
+              <Menu
+                id="menu-appbar"
+                anchorEl={anchorEl}
+                anchorOrigin={{
+                  vertical: 'top',
+                  horizontal: 'right',
+                }}
+                keepMounted
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'right',
+                }}
+                open={Boolean(anchorEl)}
+                onClose={handleClose}
+              >
+                <MenuItem onClick={handleClose}>Profile</MenuItem>
+                <MenuItem onClick={handleLogout}>Logout</MenuItem>
+              </Menu>
+            </Box>
+          </Toolbar>
+        </AppBar>
+
+        <Container maxWidth="lg" sx={{ py: 4 }}>
+          <AnimatePresence mode="wait">
+            {activeProject ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <ProjectTimeline
+                  project={activeProject}
+                  onTaskToggle={handleTaskToggle}
+                />
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: '60vh',
+                    textAlign: 'center',
+                    gap: 3,
+                  }}
                 >
-                  <Button
-                    startIcon={<AddIcon />}
-                    variant="contained"
-                    onClick={handleNewProjectClick}
+                  <Typography 
+                    variant="h4" 
+                    gutterBottom
                     sx={{
-                      borderRadius: 2,
-                      textTransform: 'none',
-                      px: 3,
                       background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
-                      '&:hover': {
-                        background: 'linear-gradient(45deg, #2563eb, #7c3aed)',
-                      },
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      fontWeight: 700,
                     }}
                   >
-                    Create New Project
-                  </Button>
-                </motion.div>
-              </Box>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </Container>
+                    Welcome to Project Timeline Tracker
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary" paragraph>
+                    Create a new project to get started
+                  </Typography>
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Button
+                      startIcon={<AddIcon />}
+                      variant="contained"
+                      onClick={handleNewProjectClick}
+                      sx={{
+                        borderRadius: 2,
+                        textTransform: 'none',
+                        px: 3,
+                        background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
+                        '&:hover': {
+                          background: 'linear-gradient(45deg, #2563eb, #7c3aed)',
+                        },
+                      }}
+                    >
+                      Create New Project
+                    </Button>
+                  </motion.div>
+                </Box>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </Container>
+      </Box>
 
       <Dialog 
         open={isProjectTypeDialogOpen} 
@@ -270,8 +338,8 @@ export const AppContent: React.FC = () => {
       <NewProjectForm
         open={isNewProjectFormOpen}
         onClose={() => setIsNewProjectFormOpen(false)}
-        onSubmit={handleCreateProject}
+        onProjectCreate={handleCreateProject}
       />
     </Box>
   );
-}; 
+};

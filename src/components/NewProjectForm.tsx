@@ -12,22 +12,22 @@ import {
 } from '@mui/material';
 import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Project } from '../store/slices/projectSlice';
+import { Project } from '../types';
 
 interface NewProjectFormProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  onProjectCreate: (project: Project) => Promise<void>;
 }
 
 export const NewProjectForm: React.FC<NewProjectFormProps> = ({
   open,
   onClose,
-  onSubmit,
+  onProjectCreate,
 }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [tasks, setTasks] = useState<Array<{ title: string; description: string }>>([]);
+  const [tasks, setTasks] = useState<{ title: string; description: string }[]>([]);
 
   const handleAddTask = () => {
     setTasks([...tasks, { title: '', description: '' }]);
@@ -47,19 +47,36 @@ export const NewProjectForm: React.FC<NewProjectFormProps> = ({
     setTasks(newTasks);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({
-      title,
+    
+    const newProject: Project = {
+      id: Date.now().toString(),
+      name: title,
       description,
-      tasks: tasks.map((task) => ({
-        id: Math.random().toString(36).substr(2, 9),
+      status: 'Not Started',
+      priority: 'Medium',
+      dueDate: new Date().toISOString(),
+      progress: 0,
+      team: [],
+      tasks: tasks.map(task => ({
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
         title: task.title,
         description: task.description,
+        status: 'Todo',
+        priority: 'Medium',
+        dueDate: new Date().toISOString(),
+        assignedTo: '',
+        projectId: Date.now().toString(),
         completed: false,
-      })),
-    });
-    handleClose();
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        subtasks: []
+      }))
+    };
+
+    await onProjectCreate(newProject);
+    onClose();
   };
 
   const handleClose = () => {

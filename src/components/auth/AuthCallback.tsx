@@ -13,7 +13,7 @@ export const AuthCallback: React.FC = () => {
         if (error) throw error;
 
         // If we get here, the user is authenticated
-        navigate('/app');
+        navigate('/app/dashboard');
       } catch (error) {
         console.error('Auth callback error:', error);
         navigate('/auth/login');

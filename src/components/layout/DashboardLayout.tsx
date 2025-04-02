@@ -38,7 +38,9 @@ import { useAuth } from '../../hooks/useAuth';
 
 const drawerWidth = 240;
 
-const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
+const Main = styled('main', {
+  shouldForwardProp: (prop) => prop !== 'open' && prop !== 'isMobile',
+})<{
   open?: boolean;
   isMobile?: boolean;
 }>(({ theme, open, isMobile }) => ({
@@ -104,6 +106,7 @@ const SearchInput = styled(InputBase)(({ theme }) => ({
 
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/app/dashboard' },
+  { text: 'New Project', icon: <AddIcon />, path: '/app/new-project' },
   { text: 'Projects', icon: <AssignmentIcon />, path: '/app/projects' },
   { text: 'Team', icon: <PeopleIcon />, path: '/app/team' },
   { text: 'Settings', icon: <SettingsIcon />, path: '/app/settings' },
@@ -242,8 +245,20 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
         onClose={handleDrawerToggle}
       >
         <DrawerHeader>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, ml: 2 }}>
-            Task App
+          <Typography 
+            variant="h6" 
+            noWrap 
+            component="div" 
+            sx={{ 
+              flexGrow: 1, 
+              ml: 2,
+              fontWeight: 700,
+              background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+          >
+            Taskr
           </Typography>
           <IconButton onClick={handleDrawerToggle}>
             <ChevronLeftIcon />

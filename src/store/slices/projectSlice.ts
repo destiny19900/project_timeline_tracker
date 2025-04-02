@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import type { Project, Task } from '../../types';
+import { Project, Task } from '../../types';
 
 interface ProjectState {
   projects: Project[];
@@ -41,5 +41,13 @@ const projectSlice = createSlice({
   },
 });
 
-export const { setProjects, addProject, updateProject, deleteProject, setLoading, setError } = projectSlice.actions;
+export const {
+  setProjects,
+  addProject,
+  updateProject,
+  deleteProject,
+  setLoading,
+  setError,
+} = projectSlice.actions;
+
 export default projectSlice.reducer; 
