@@ -121,6 +121,13 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
   const { signOut } = useAuth();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
+  // Close drawer when navigating to a new page
+  React.useEffect(() => {
+    if (isMobile) {
+      setOpen(false);
+    }
+  }, [isMobile, window.location.pathname]);
+
   const handleDrawerToggle = () => {
     setOpen(!open);
   };
@@ -138,13 +145,6 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
     await signOut();
     navigate('/');
   };
-
-  // Close drawer by default on mobile
-  React.useEffect(() => {
-    if (isMobile) {
-      setOpen(false);
-    }
-  }, [isMobile]);
 
   return (
     <Box sx={{ display: 'flex' }}>

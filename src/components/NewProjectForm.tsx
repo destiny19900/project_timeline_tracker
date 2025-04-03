@@ -66,7 +66,7 @@ export const NewProjectForm: React.FC<NewProjectFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || loading) return; // Prevent multiple submissions
 
     console.log('Starting form submission...');
     console.log('Current form data:', formData);
@@ -326,6 +326,24 @@ export const NewProjectForm: React.FC<NewProjectFormProps> = ({
                                   <MenuItem value="blocked">Blocked</MenuItem>
                                 </Select>
                               </FormControl>
+                            </Box>
+                            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mt: 2 }}>
+                              <TextField
+                                label="Start Date"
+                                type="date"
+                                value={task.startDate || ''}
+                                onChange={(e) => updateTask(index, 'startDate', e.target.value)}
+                                fullWidth
+                                InputLabelProps={{ shrink: true }}
+                              />
+                              <TextField
+                                label="End Date"
+                                type="date"
+                                value={task.endDate || ''}
+                                onChange={(e) => updateTask(index, 'endDate', e.target.value)}
+                                fullWidth
+                                InputLabelProps={{ shrink: true }}
+                              />
                             </Box>
                           </Box>
                           <IconButton
