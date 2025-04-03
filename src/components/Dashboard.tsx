@@ -8,6 +8,9 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import { styled } from '@mui/material/styles';
 import { Add as AddIcon } from '@mui/icons-material';
 import { CreateTaskModal } from './tasks/CreateTaskModal';
+import { NewProjectForm } from './NewProjectForm';
+import { projectService } from '../services/projectService';
+import { useAuth } from '../hooks/useAuth';
 
 const StatCard = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -83,6 +86,8 @@ const StatItem = styled(Box)(({ theme }) => ({
 export const Dashboard: React.FC = () => {
   const theme = useTheme();
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
+  const [isNewProjectFormOpen, setIsNewProjectFormOpen] = useState(false);
+  const { user } = useAuth();
 
   const stats = [
     {
@@ -178,6 +183,21 @@ export const Dashboard: React.FC = () => {
     // TODO: Implement task creation logic
   };
 
+  const handleCreateProject = async (project: any) => {
+    try {
+      console.log('Creating project:', project);
+      const newProject = await projectService.createProject({
+        ...project,
+        userId: user?.id || '',
+      });
+      console.log('Project created successfully:', newProject);
+      setIsNewProjectFormOpen(false);
+      // TODO: Refresh projects list
+    } catch (error) {
+      console.error('Error creating project:', error);
+    }
+  };
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
@@ -185,7 +205,7 @@ export const Dashboard: React.FC = () => {
           Dashboard
         </Typography>
         <IconButton
-          onClick={() => setIsCreateTaskModalOpen(true)}
+          onClick={() => setIsNewProjectFormOpen(true)}
           sx={{
             background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
             color: 'white',
@@ -351,6 +371,12 @@ export const Dashboard: React.FC = () => {
         open={isCreateTaskModalOpen}
         onClose={() => setIsCreateTaskModalOpen(false)}
         onSubmit={handleCreateTask}
+      />
+
+      <NewProjectForm
+        open={isNewProjectFormOpen}
+        onClose={() => setIsNewProjectFormOpen(false)}
+        onProjectCreate={handleCreateProject}
       />
     </Container>
   );

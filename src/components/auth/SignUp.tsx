@@ -70,19 +70,17 @@ export const SignUp: React.FC = () => {
       }
 
       if (authData.user) {
-        // Create user profile in the users table using admin client
-        const { error: profileError } = await supabaseAdmin
+        // Create user profile in the users table
+        const { error: profileError } = await supabase
           .from('users')
-          .upsert([
+          .insert([
             {
               id: authData.user.id,
               username: username || email.split('@')[0],
               email,
               created_at: new Date().toISOString(),
             },
-          ], {
-            onConflict: 'id',
-          });
+          ]);
 
         if (profileError) {
           console.error('Profile creation error:', profileError);
@@ -93,7 +91,7 @@ export const SignUp: React.FC = () => {
         const tempProject = localStorage.getItem('tempProject');
         if (tempProject) {
           const project = JSON.parse(tempProject);
-          const { error: projectError } = await supabaseAdmin
+          const { error: projectError } = await supabase
             .from('projects')
             .insert([
               {

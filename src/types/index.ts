@@ -2,29 +2,30 @@ export interface Task {
   id: string;
   title: string;
   description: string;
-  status: 'Todo' | 'In Progress' | 'Done';
-  priority: 'Low' | 'Medium' | 'High';
-  dueDate: string;
-  assignedTo: string;
   projectId: string;
+  assignedTo: string | null;
+  status: 'todo' | 'in_progress' | 'completed' | 'blocked';
+  priority: 'low' | 'medium' | 'high';
+  startDate: string | null;
+  endDate: string | null;
+  orderIndex: number;
+  parentId: string | null;
   completed: boolean;
   createdAt: string;
   updatedAt: string;
-  parentId?: string;
-  subtasks: any[]; // We can define a proper subtask interface later if needed
+  subtasks: Task[];
 }
 
 export interface Project {
   id: string;
-  name: string;
+  title: string;
   description: string;
-  status: 'Not Started' | 'In Progress' | 'On Track' | 'Almost Done' | 'Completed';
-  priority: 'Low' | 'Medium' | 'High';
-  dueDate: string;
-  progress: number;
-  team: {
-    name: string;
-    avatar: string;
-  }[];
+  userId: string;
+  status: 'not_started' | 'in_progress' | 'completed' | 'on_hold';
+  priority: 'low' | 'medium' | 'high';
+  startDate: string | null;
+  endDate: string | null;
+  createdAt: string;
+  updatedAt: string;
   tasks: Task[];
 } 

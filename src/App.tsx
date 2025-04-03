@@ -18,6 +18,9 @@ import { DashboardContent } from './components/dashboard/DashboardContent';
 import { Dashboard } from './components/Dashboard';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { AdminLogin } from './pages/admin/AdminLogin';
+import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { Projects } from './pages/Projects';
 
 const App: React.FC = () => {
   return (
@@ -44,6 +47,7 @@ const App: React.FC = () => {
                         <Routes>
                           <Route path="dashboard" element={<Dashboard />} />
                           <Route path="new-project" element={<NewProject />} />
+                          <Route path="projects" element={<Projects />} />
                           <Route path="/tasks" element={<DashboardContent />} />
                           <Route path="/team" element={<DashboardContent />} />
                           <Route path="/documents" element={<DashboardContent />} />
@@ -71,6 +75,10 @@ const App: React.FC = () => {
                     </ProtectedRoute>
                   }
                 />
+
+                {/* Admin routes */}
+                <Route path="/admin/login" element={<AdminLogin />} />
+                <Route path="/admin/dashboard" element={<AdminDashboard />} />
 
                 {/* Redirect any unknown paths to home */}
                 <Route path="*" element={<Navigate to="/" replace />} />

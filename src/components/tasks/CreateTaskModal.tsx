@@ -132,6 +132,16 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       onClose={onClose}
       fullWidth
       maxWidth={false}
+      sx={{
+        '& .MuiDialog-container': {
+          alignItems: 'flex-end',
+          '& .MuiPaper-root': {
+            width: '100%',
+            maxWidth: '100%',
+            margin: 0,
+          },
+        },
+      }}
       PaperProps={{
         sx: {
           position: 'fixed',
@@ -145,7 +155,6 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
           display: 'flex',
           flexDirection: 'column',
           animation: 'slideUp 0.3s ease-out',
-          width: '100vw',
           '@keyframes slideUp': {
             '0%': {
               transform: 'translateY(100%)',
@@ -168,29 +177,51 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         borderColor: 'divider',
         px: { xs: 2, sm: 3 }
       }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
             Create New Project
           </Typography>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={projectData.useAI}
-                onChange={(e) => setProjectData({ ...projectData, useAI: e.target.checked })}
-                color="primary"
-              />
-            }
-            label={
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <AIIcon fontSize="small" />
-                <Typography variant="body2">Use AI</Typography>
-              </Box>
-            }
-          />
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1,
+            bgcolor: 'action.hover',
+            borderRadius: 2,
+            p: 0.5,
+            ml: 'auto'
+          }}>
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                color: !projectData.useAI ? 'primary.main' : 'text.secondary',
+                fontWeight: !projectData.useAI ? 600 : 400
+              }}
+            >
+              Add Manually
+            </Typography>
+            <Switch
+              checked={projectData.useAI}
+              onChange={(e) => setProjectData({ ...projectData, useAI: e.target.checked })}
+              color="primary"
+              size="small"
+            />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <AIIcon fontSize="small" sx={{ color: projectData.useAI ? 'primary.main' : 'text.secondary' }} />
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  color: projectData.useAI ? 'primary.main' : 'text.secondary',
+                  fontWeight: projectData.useAI ? 600 : 400
+                }}
+              >
+                Use AI
+              </Typography>
+            </Box>
+          </Box>
+          <IconButton onClick={onClose} size="small" aria-label="close">
+            <CloseIcon />
+          </IconButton>
         </Box>
-        <IconButton onClick={onClose} size="small" aria-label="close">
-          <CloseIcon />
-        </IconButton>
       </DialogTitle>
       <DialogContent sx={{ 
         flex: 1, 
@@ -198,6 +229,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         display: 'flex',
         flexDirection: 'column',
         p: { xs: 2, sm: 3 },
+        width: '100%',
         '&::-webkit-scrollbar': {
           width: '8px',
         },
@@ -209,7 +241,12 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
           borderRadius: '4px',
         },
       }}>
-        <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <Box component="form" onSubmit={handleSubmit} sx={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          minHeight: 0,
+          width: '100%'
+        }}>
           <Stack spacing={2}>
             <TextField
               label="Project Name"
@@ -382,7 +419,8 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         pt: 0,
         borderTop: 1,
         borderColor: 'divider',
-        gap: 1
+        gap: 1,
+        width: '100%'
       }}>
         <Button onClick={onClose} variant="outlined" fullWidth size="small">
           Cancel

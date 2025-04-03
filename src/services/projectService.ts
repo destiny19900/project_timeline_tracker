@@ -5,47 +5,130 @@ import type { Project, Task } from '../types';
 type ProjectRow = Database['public']['Tables']['projects']['Row'];
 type TaskRow = Database['public']['Tables']['tasks']['Row'];
 
-class ProjectService {
-  async getProjects(userId: string): Promise<Project[]> {
-    const { data: projects, error: projectsError } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+const mapTaskRow = (row: any): Task => {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    status: row.status,
+    priority: row.priority,
+    assignedTo: row.assigned_to,
+    startDate: row.start_date,
+    endDate: row.end_date,
+    orderIndex: row.order_index,
+    parentId: row.parent_id,
+    completed: row.completed,
+    projectId: row.project_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+};
 
-    if (projectsError) throw projectsError;
+const mapProjectRow = (row: any): Project => {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    status: row.status,
+    priority: row.priority,
+    userId: row.user_id,
+    startDate: row.start_date,
+    endDate: row.end_date,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    tasks: row.tasks ? row.tasks.map(mapTaskRow) : [],
+  };
+};
 
-    const projectPromises = projects.map(async (project) => {
-      const { data: tasks, error: tasksError } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('project_id', project.id)
-        .order('created_at', { ascending: true });
+export const projectService = {
+  async getProjects(): Promise<Project[]> {
+    try {
+      console.log('Fetching projects...');
+      const { data, error } = await supabase
+        .from('projects')
+        .select(`
+          *,
+          tasks (*)
+        `)
+        .order('created_at', { ascending: false });
 
-      if (tasksError) throw tasksError;
+      if (error) {
+        console.error('Error fetching projects:', error);
+        throw error;
+      }
+      console.log('Projects fetched successfully:', data);
+      return data.map(mapProjectRow);
+    } catch (error) {
+      console.error('Error in getProjects:', error);
+      throw error;
+    }
+  },
 
-      return this.mapProjectWithTasks(project, tasks);
-    });
+  async createProject(projectData: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>): Promise<Project> {
+    try {
+      console.log('Creating project with data:', projectData);
 
-    return Promise.all(projectPromises);
-  }
+      // Start a transaction
+      const { data: project, error: projectError } = await supabase
+        .from('projects')
+        .insert({
+          title: projectData.title,
+          description: projectData.description,
+          status: projectData.status,
+          priority: projectData.priority,
+          user_id: projectData.userId,
+          start_date: projectData.startDate,
+          end_date: projectData.endDate,
+        })
+        .select()
+        .single();
 
-  async createProject(project: Omit<Project, 'id' | 'createdAt'>): Promise<Project> {
-    const { data, error } = await supabase
-      .from('projects')
-      .insert({
-        title: project.title,
-        description: project.description,
-        user_id: project.userId,
-      })
-      .select()
-      .single();
+      if (projectError) throw projectError;
 
-    if (error) throw error;
-    if (!data) throw new Error('Failed to create project');
+      console.log('Project created:', project);
 
-    return this.mapProjectRow(data);
-  }
+      // If there are tasks, insert them
+      if (projectData.tasks && projectData.tasks.length > 0) {
+        const tasksToInsert = projectData.tasks.map(task => ({
+          title: task.title,
+          description: task.description,
+          status: task.status,
+          priority: task.priority,
+          assigned_user_id: task.assignedTo,
+          start_date: task.startDate,
+          end_date: task.endDate,
+          order_index: task.orderIndex,
+          parent_id: task.parentId,
+          completed: task.completed,
+          project_id: project.id,
+        }));
+
+        const { error: tasksError } = await supabase
+          .from('tasks')
+          .insert(tasksToInsert);
+
+        if (tasksError) throw tasksError;
+      }
+
+      // Fetch the complete project with tasks
+      const { data: completeProject, error: fetchError } = await supabase
+        .from('projects')
+        .select(`
+          *,
+          tasks (*)
+        `)
+        .eq('id', project.id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      console.log('Complete project fetched:', completeProject);
+      return mapProjectRow(completeProject);
+    } catch (error) {
+      console.error('Error in createProject:', error);
+      throw error;
+    }
+  },
 
   async updateProject(project: Project): Promise<Project> {
     const { data, error } = await supabase
@@ -62,8 +145,8 @@ class ProjectService {
     if (error) throw error;
     if (!data) throw new Error('Failed to update project');
 
-    return this.mapProjectRow(data);
-  }
+    return mapProjectRow(data);
+  },
 
   async deleteProject(projectId: string): Promise<void> {
     const { error } = await supabase
@@ -72,7 +155,7 @@ class ProjectService {
       .eq('id', projectId);
 
     if (error) throw error;
-  }
+  },
 
   async createTask(task: Omit<Task, 'id' | 'createdAt'>): Promise<Task> {
     const { data, error } = await supabase
@@ -90,8 +173,8 @@ class ProjectService {
     if (error) throw error;
     if (!data) throw new Error('Failed to create task');
 
-    return this.mapTaskRow(data);
-  }
+    return mapTaskRow(data);
+  },
 
   async updateTask(task: Task): Promise<Task> {
     const { data, error } = await supabase
@@ -109,8 +192,8 @@ class ProjectService {
     if (error) throw error;
     if (!data) throw new Error('Failed to update task');
 
-    return this.mapTaskRow(data);
-  }
+    return mapTaskRow(data);
+  },
 
   async deleteTask(taskId: string): Promise<void> {
     const { error } = await supabase
@@ -119,56 +202,5 @@ class ProjectService {
       .eq('id', taskId);
 
     if (error) throw error;
-  }
-
-  private mapProjectRow(row: ProjectRow): Project {
-    return {
-      id: row.id,
-      title: row.title,
-      description: row.description,
-      userId: row.user_id,
-      createdAt: row.created_at,
-      tasks: [],
-    };
-  }
-
-  private mapTaskRow(row: TaskRow): Task {
-    return {
-      id: row.id,
-      title: row.title,
-      description: row.description,
-      projectId: row.project_id,
-      completed: row.completed,
-      createdAt: row.created_at,
-      parentId: row.parent_id,
-      subtasks: [],
-    };
-  }
-
-  private mapProjectWithTasks(project: ProjectRow, tasks: TaskRow[]): Project {
-    const mappedProject = this.mapProjectRow(project);
-    const taskMap = new Map<string, Task>();
-
-    // First pass: create all tasks
-    tasks.forEach((task) => {
-      taskMap.set(task.id, this.mapTaskRow(task));
-    });
-
-    // Second pass: build task hierarchy
-    tasks.forEach((task) => {
-      const mappedTask = taskMap.get(task.id)!;
-      if (task.parent_id) {
-        const parentTask = taskMap.get(task.parent_id);
-        if (parentTask) {
-          parentTask.subtasks.push(mappedTask);
-        }
-      } else {
-        mappedProject.tasks.push(mappedTask);
-      }
-    });
-
-    return mappedProject;
-  }
-}
-
-export default new ProjectService(); 
+  },
+}; 

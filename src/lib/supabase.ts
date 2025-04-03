@@ -2,22 +2,27 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
-// Create a regular client for user operations
+// Create a regular client for all operations
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Create a service role client for admin operations
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey || supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
+// Function to fetch all users
+export const getAllUsers = async () => {
+  const { data: users, error } = await supabase
+    .from('users')
+    .select('*');
+  
+  if (error) {
+    console.error('Error fetching users:', error);
+    return [];
   }
-});
+  
+  return users;
+};
 
 export type Database = {
   public: {
@@ -48,6 +53,10 @@ export type Database = {
           title: string;
           description: string;
           user_id: string;
+          status: 'not_started' | 'in_progress' | 'completed' | 'on_hold';
+          priority: 'low' | 'medium' | 'high';
+          start_date: string | null;
+          end_date: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -56,6 +65,10 @@ export type Database = {
           title: string;
           description: string;
           user_id: string;
+          status?: 'not_started' | 'in_progress' | 'completed' | 'on_hold';
+          priority?: 'low' | 'medium' | 'high';
+          start_date?: string | null;
+          end_date?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -64,6 +77,10 @@ export type Database = {
           title?: string;
           description?: string;
           user_id?: string;
+          status?: 'not_started' | 'in_progress' | 'completed' | 'on_hold';
+          priority?: 'low' | 'medium' | 'high';
+          start_date?: string | null;
+          end_date?: string | null;
           created_at?: string;
           updated_at?: string;
         };
