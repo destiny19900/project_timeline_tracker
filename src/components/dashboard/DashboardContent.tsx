@@ -24,7 +24,7 @@ import {
 } from '@mui/icons-material';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { projectService } from '../../services/projectService';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import { format } from 'date-fns';
 
 export const DashboardContent: React.FC = () => {

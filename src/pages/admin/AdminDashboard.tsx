@@ -21,6 +21,7 @@ import { Delete as DeleteIcon, Edit as EditIcon } from '@mui/icons-material';
 import { supabase } from '../../lib/supabase';
 import { adminAuthService } from '../../services/adminAuthService';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
 
 interface TabPanelProps {
   children?: React.ReactNode;

@@ -11,7 +11,7 @@ import {
   Divider,
 } from '@mui/material';
 import { motion } from 'framer-motion';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 
 interface UserProfile {

@@ -20,7 +20,7 @@ import { motion } from 'framer-motion';
 import { NewProjectForm } from '../components/NewProjectForm';
 import { projectService } from '../services/projectService';
 import type { Project } from '../types';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 
 const getPriorityColor = (priority: string) => {
@@ -135,61 +135,88 @@ export const Projects: React.FC = () => {
       </Box>
 
       <Grid container spacing={3}>
-        {projects.map((project, index) => (
-          <Grid item xs={12} sm={6} md={4} key={project.id}>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
+        {projects.length > 0 ? (
+          projects.map((project, index) => (
+            <Grid item xs={12} sm={6} md={4} key={project.id}>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <ProjectCard>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Typography variant="h6" sx={{ flex: 1 }}>
+                      {project.title}
+                    </Typography>
+                    <Chip
+                      label={project.status}
+                      size="small"
+                      color={
+                        project.status === 'completed' ? 'success' :
+                        project.status === 'in_progress' ? 'warning' : 'default'
+                      }
+                    />
+                  </Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    {project.description}
+                  </Typography>
+                  <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+                    <Chip
+                      label={project.priority}
+                      size="small"
+                      color={
+                        project.priority === 'high' ? 'error' :
+                        project.priority === 'medium' ? 'warning' : 'success'
+                      }
+                    />
+                    <Chip
+                      label={`${project.tasks.length} tasks`}
+                      size="small"
+                      variant="outlined"
+                    />
+                  </Stack>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      {project.startDate} - {project.endDate}
+                    </Typography>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => navigate(`/app/projects/${project.id}`)}
+                    >
+                      View Details
+                    </Button>
+                  </Box>
+                </ProjectCard>
+              </motion.div>
+            </Grid>
+          ))
+        ) : (
+          <Grid item xs={12}>
+            <Paper 
+              sx={{ 
+                p: 5, 
+                textAlign: 'center',
+                borderRadius: 2,
+                backgroundColor: theme => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)'
+              }}
             >
-              <ProjectCard>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <Typography variant="h6" sx={{ flex: 1 }}>
-                    {project.title}
-                  </Typography>
-                  <Chip
-                    label={project.status}
-                    size="small"
-                    color={
-                      project.status === 'completed' ? 'success' :
-                      project.status === 'in_progress' ? 'warning' : 'default'
-                    }
-                  />
-                </Box>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  {project.description}
-                </Typography>
-                <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
-                  <Chip
-                    label={project.priority}
-                    size="small"
-                    color={
-                      project.priority === 'high' ? 'error' :
-                      project.priority === 'medium' ? 'warning' : 'success'
-                    }
-                  />
-                  <Chip
-                    label={`${project.tasks.length} tasks`}
-                    size="small"
-                    variant="outlined"
-                  />
-                </Stack>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="body2" color="text.secondary">
-                    {project.startDate} - {project.endDate}
-                  </Typography>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={() => navigate(`/app/projects/${project.id}`)}
-                  >
-                    View Details
-                  </Button>
-                </Box>
-              </ProjectCard>
-            </motion.div>
+              <Typography variant="h6" color="text.secondary">
+                No projects available
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 3 }}>
+                Create your first project by clicking the "New Project" button above
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => setIsNewProjectFormOpen(true)}
+              >
+                Create New Project
+              </Button>
+            </Paper>
           </Grid>
-        ))}
+        )}
       </Grid>
 
       <NewProjectForm

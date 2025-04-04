@@ -9,9 +9,11 @@ import { styled } from '@mui/material/styles';
 import { Add as AddIcon, Bolt as AIIcon } from '@mui/icons-material';
 import { CreateTaskModal } from './tasks/CreateTaskModal';
 import { NewProjectForm } from './NewProjectForm';
+import { AIProjectForm } from './AIProjectForm';
 import { projectService } from '../services/projectService';
 import { useAuth } from '../hooks/useAuth';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 const StatCard = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -103,8 +105,10 @@ interface TaskItem {
 
 export const Dashboard: React.FC = () => {
   const theme = useTheme();
+  const navigate = useNavigate();
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
   const [isNewProjectFormOpen, setIsNewProjectFormOpen] = useState(false);
+  const [isAIProjectFormOpen, setIsAIProjectFormOpen] = useState(false);
   const [useAI, setUseAI] = useState(false);
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -230,23 +234,9 @@ export const Dashboard: React.FC = () => {
       console.log('Creating project:', project);
       
       if (useAI) {
-        // AI-assisted project creation
+        // AI-assisted project creation is now handled by AIProjectForm
         console.log('Using AI to enhance project creation');
-        
-        // Add some AI-enhanced features (simulated for now)
-        const enhancedProject = {
-          ...project,
-          userId: user?.id || '',
-          description: project.description 
-            ? `${project.description}\n\nAI Enhanced: This project uses AI-assisted management features.` 
-            : 'AI Enhanced: This project uses AI-assisted management features.',
-          // Additional AI features could be added here
-        };
-        
-        // You could add AI-generated tasks based on the project description here
-        
-        const newProject = await projectService.createProject(enhancedProject);
-        console.log('AI-enhanced project created successfully:', newProject);
+        setIsAIProjectFormOpen(true);
       } else {
         // Regular project creation
         const newProject = await projectService.createProject({
@@ -254,14 +244,27 @@ export const Dashboard: React.FC = () => {
           userId: user?.id || '',
         });
         console.log('Project created successfully:', newProject);
+        
+        setIsNewProjectFormOpen(false);
+        // Refresh the dashboard data
+        window.location.reload(); // Simple refresh for now
       }
-      
-      setIsNewProjectFormOpen(false);
-      // Refresh the dashboard data
-      window.location.reload(); // Simple refresh for now
     } catch (error) {
       console.error('Error creating project:', error);
     }
+  };
+
+  const handleProjectClick = (projectId: string) => {
+    navigate(`/app/projects/${projectId}`);
+  };
+
+  const getProjectInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase();
   };
 
   if (loading) {
@@ -308,7 +311,7 @@ export const Dashboard: React.FC = () => {
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 4, gap: 2 }}>
         <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
-          Dashboard
+          Welcome {user?.email?.split('@')[0] || 'User'} 👋
         </Typography>
         
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -326,7 +329,7 @@ export const Dashboard: React.FC = () => {
 
           <Zoom in={true} style={{ transitionDelay: '300ms' }}>
             <IconButton
-              onClick={() => setIsNewProjectFormOpen(true)}
+              onClick={() => useAI ? setIsAIProjectFormOpen(true) : setIsNewProjectFormOpen(true)}
               sx={{
                 background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
                 color: 'white',
@@ -390,9 +393,22 @@ export const Dashboard: React.FC = () => {
             {dashboardData.recentProjects.length > 0 ? (
               dashboardData.recentProjects.map((project) => (
                 <Grid item xs={12} sm={6} md={4} key={project.id}>
-                  <ProjectCard>
+                  <ProjectCard 
+                    onClick={() => handleProjectClick(project.id)}
+                    sx={{ cursor: 'pointer' }}
+                  >
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <Typography variant="h6" noWrap sx={{ maxWidth: '80%' }}>
+                      <Typography 
+                        variant="h6" 
+                        noWrap 
+                        sx={{ 
+                          maxWidth: { xs: '55%', sm: '65%' },
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          fontSize: { xs: '0.9rem', sm: '1rem' }
+                        }}
+                      >
                         {project.name}
                       </Typography>
                       <Chip
@@ -417,14 +433,26 @@ export const Dashboard: React.FC = () => {
                           {project.dueDate ? format(new Date(project.dueDate), 'MMM dd') : 'No date'}
                         </Typography>
                       </Box>
-                      <Chip
-                        label={project.status}
-                        size="small"
-                        color={
-                          project.status === 'completed' ? 'success' :
-                          project.status === 'in_progress' ? 'warning' : 'info'
-                        }
-                      />
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Avatar 
+                          sx={{ 
+                            width: 24, 
+                            height: 24, 
+                            fontSize: '0.75rem',
+                            bgcolor: theme.palette.primary.main 
+                          }}
+                        >
+                          {getProjectInitials(project.name)}
+                        </Avatar>
+                        <Chip
+                          label={project.status}
+                          size="small"
+                          color={
+                            project.status === 'completed' ? 'success' :
+                            project.status === 'in_progress' ? 'warning' : 'info'
+                          }
+                        />
+                      </Box>
                     </Box>
                   </ProjectCard>
                 </Grid>
@@ -500,6 +528,16 @@ export const Dashboard: React.FC = () => {
         open={isNewProjectFormOpen}
         onClose={() => setIsNewProjectFormOpen(false)}
         onProjectCreate={handleCreateProject}
+      />
+      
+      {/* AI Project Form */}
+      <AIProjectForm
+        open={isAIProjectFormOpen}
+        onClose={() => setIsAIProjectFormOpen(false)}
+        onSuccess={() => {
+          // Refresh dashboard data after creating an AI project
+          window.location.reload();
+        }}
       />
     </Container>
   );

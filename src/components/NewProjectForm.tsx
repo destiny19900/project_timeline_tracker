@@ -22,7 +22,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Project, Task } from '../types';
 import { projectService } from '../services/projectService';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 
 interface NewProjectFormProps {

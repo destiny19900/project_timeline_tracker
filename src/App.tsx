@@ -1,9 +1,9 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './store';
 import { ThemeProvider } from './providers/ThemeProvider';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider } from './providers/AuthProvider';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LandingPage } from './components/LandingPage';
 import { AppContent } from './components/AppContent';
@@ -14,7 +14,6 @@ import { UserProfile } from './components/user/UserProfile';
 import { NewProject } from './components/projects/NewProject';
 import { AuthCallback } from './components/auth/AuthCallback';
 import { DashboardLayout } from './components/layout/DashboardLayout';
-import { DashboardContent } from './components/dashboard/DashboardContent';
 import { Dashboard } from './components/Dashboard';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -22,6 +21,9 @@ import { AdminLogin } from './pages/admin/AdminLogin';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { Projects } from './pages/Projects';
 import { ProjectDetails } from './pages/ProjectDetails';
+import Settings from './pages/Settings';
+import Profile from './pages/Profile';
+import Team from './pages/Team';
 
 const App: React.FC = () => {
   return (
@@ -41,26 +43,24 @@ const App: React.FC = () => {
 
                 {/* Protected routes */}
                 <Route
-                  path="/app/*"
+                  path="/app"
                   element={
                     <ProtectedRoute>
                       <DashboardLayout>
-                        <Routes>
-                          <Route path="dashboard" element={<Dashboard />} />
-                          <Route path="new-project" element={<NewProject />} />
-                          <Route path="projects" element={<Projects />} />
-                          <Route path="projects/:projectId" element={<ProjectDetails />} />
-                          <Route path="/tasks" element={<DashboardContent />} />
-                          <Route path="/team" element={<DashboardContent />} />
-                          <Route path="/documents" element={<DashboardContent />} />
-                          <Route path="/clients" element={<DashboardContent />} />
-                          {/* Redirect any unknown paths to dashboard */}
-                          <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
-                        </Routes>
+                        <Outlet />
                       </DashboardLayout>
                     </ProtectedRoute>
                   }
-                />
+                >
+                  <Route index element={<Navigate to="/app/dashboard" />} />
+                  <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="new-project" element={<NewProject />} />
+                  <Route path="projects" element={<Projects />} />
+                  <Route path="projects/:projectId" element={<ProjectDetails />} />
+                  <Route path="settings" element={<Settings />} />
+                  <Route path="profile" element={<Profile />} />
+                  <Route path="team" element={<Team />} />
+                </Route>
                 <Route
                   path="/dashboard"
                   element={
