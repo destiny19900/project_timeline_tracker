@@ -1,16 +1,17 @@
-import React, { useState } from 'react';
-import { Box, Typography, Paper, Stack, LinearProgress, Chip, IconButton, Tooltip, Avatar, AvatarGroup, Grid, Container, Fab } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Box, Typography, Paper, Stack, LinearProgress, Chip, IconButton, Tooltip, Avatar, AvatarGroup, Grid, Container, CircularProgress, Switch, FormControlLabel, Zoom } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import { styled } from '@mui/material/styles';
-import { Add as AddIcon } from '@mui/icons-material';
+import { Add as AddIcon, Bolt as AIIcon } from '@mui/icons-material';
 import { CreateTaskModal } from './tasks/CreateTaskModal';
 import { NewProjectForm } from './NewProjectForm';
 import { projectService } from '../services/projectService';
 import { useAuth } from '../hooks/useAuth';
+import { format } from 'date-fns';
 
 const StatCard = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -83,100 +84,141 @@ const StatItem = styled(Box)(({ theme }) => ({
   },
 }));
 
+interface ProjectItem {
+  id: string;
+  name: string;
+  progress: number;
+  status: string;
+  dueDate: string | null;
+  priority: string;
+  team: Array<{ name: string; avatar: string }>;
+}
+
+interface TaskItem {
+  title: string;
+  date: string | null;
+  project: string;
+  priority: string;
+}
+
 export const Dashboard: React.FC = () => {
   const theme = useTheme();
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
   const [isNewProjectFormOpen, setIsNewProjectFormOpen] = useState(false);
+  const [useAI, setUseAI] = useState(false);
   const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState<{
+    totalProjects: number;
+    activeTasks: number;
+    teamMembers: number;
+    completedTasks: number;
+    recentProjects: ProjectItem[];
+    upcomingTasks: TaskItem[];
+  }>({
+    totalProjects: 0,
+    activeTasks: 0,
+    teamMembers: 1, // Hardcoded to 1 as requested
+    completedTasks: 0,
+    recentProjects: [],
+    upcomingTasks: []
+  });
 
-  const stats = [
-    {
-      title: 'Total Projects',
-      value: '12',
-      trend: '+2',
-      trendUp: true,
-      color: '#3b82f6',
-    },
-    {
-      title: 'Active Tasks',
-      value: '48',
-      trend: '+5',
-      trendUp: true,
-      color: '#8b5cf6',
-    },
-    {
-      title: 'Team Members',
-      value: '8',
-      trend: '+1',
-      trendUp: true,
-      color: '#10b981',
-    },
-    {
-      title: 'Completed Tasks',
-      value: '156',
-      trend: '+12',
-      trendUp: true,
-      color: '#f59e0b',
-    },
-  ];
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
-  const recentProjects = [
-    {
-      name: 'Website Redesign',
-      progress: 75,
-      status: 'In Progress',
-      dueDate: '2024-03-15',
-      team: [
-        { name: 'John Doe', avatar: 'JD' },
-        { name: 'Alice Miller', avatar: 'AM' },
-        { name: 'Sarah King', avatar: 'SK' },
-      ],
-      priority: 'High',
-    },
-    {
-      name: 'Mobile App Development',
-      progress: 45,
-      status: 'On Track',
-      dueDate: '2024-04-01',
-      team: [
-        { name: 'John Doe', avatar: 'JD' },
-        { name: 'Alice Miller', avatar: 'AM' },
-      ],
-      priority: 'Medium',
-    },
-    {
-      name: 'Marketing Campaign',
-      progress: 90,
-      status: 'Almost Done',
-      dueDate: '2024-03-10',
-      team: [
-        { name: 'Sarah King', avatar: 'SK' },
-        { name: 'Alice Miller', avatar: 'AM' },
-      ],
-      priority: 'Low',
-    },
-  ];
+      try {
+        console.log('Fetching dashboard data...');
+        // Fetch all projects for the current user
+        const projects = await projectService.getProjects();
+        console.log('Projects fetched:', projects.length);
+        
+        // Extract all tasks from all projects
+        const allTasks = projects.flatMap(project => project.tasks);
+        console.log('Total tasks:', allTasks.length);
+        
+        // Count active tasks (not completed or blocked)
+        const activeTasks = allTasks.filter(task => 
+          task.status !== 'completed' && task.status !== 'blocked'
+        ).length;
+        
+        // Count completed tasks
+        const completedTasks = allTasks.filter(task => 
+          task.status === 'completed'
+        ).length;
+        
+        // Get recent projects (up to 3)
+        const recentProjects = [...projects]
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, 3)
+          .map(project => {
+            // Calculate project progress based on completed tasks
+            const projectTasks = project.tasks || [];
+            const completed = projectTasks.filter(task => task.status === 'completed').length;
+            const progress = projectTasks.length > 0 
+              ? Math.round((completed / projectTasks.length) * 100) 
+              : 0;
+            
+            return {
+              id: project.id,
+              name: project.title,
+              progress,
+              status: project.status,
+              dueDate: project.endDate,
+              priority: project.priority,
+              team: [{ name: 'User', avatar: 'U' }] // Single team member placeholder
+            };
+          });
+        
+        // Get upcoming tasks based on endDate (up to 3)
+        const now = new Date();
+        const upcomingTasks = [...allTasks]
+          .filter(task => task.status !== 'completed' && task.endDate)
+          .sort((a, b) => {
+            const dateA = a.endDate ? new Date(a.endDate).getTime() : Infinity;
+            const dateB = b.endDate ? new Date(b.endDate).getTime() : Infinity;
+            return dateA - dateB;
+          })
+          .slice(0, 3)
+          .map(task => {
+            const project = projects.find(p => p.id === task.projectId);
+            return {
+              title: task.title,
+              date: task.endDate,
+              project: project?.title || 'Unknown',
+              priority: task.priority
+            };
+          });
+        
+        setDashboardData({
+          totalProjects: projects.length,
+          activeTasks,
+          teamMembers: 1, // Hardcoded to 1 as requested
+          completedTasks,
+          recentProjects,
+          upcomingTasks
+        });
+        
+        console.log('Dashboard data updated:', {
+          totalProjects: projects.length,
+          activeTasks,
+          teamMembers: 1,
+          completedTasks
+        });
+        
+      } catch (err) {
+        console.error('Failed to fetch dashboard data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const upcomingTasks = [
-    {
-      title: 'Review Design Mockups',
-      date: '2024-03-15',
-      project: 'Website Redesign',
-      priority: 'High',
-    },
-    {
-      title: 'Client Meeting',
-      date: '2024-03-16',
-      project: 'Mobile App Development',
-      priority: 'Medium',
-    },
-    {
-      title: 'Content Review',
-      date: '2024-03-17',
-      project: 'Marketing Campaign',
-      priority: 'Low',
-    },
-  ];
+    fetchDashboardData();
+  }, [user]);
 
   const handleCreateTask = (taskData: any) => {
     console.log('Creating task:', taskData);
@@ -186,36 +228,122 @@ export const Dashboard: React.FC = () => {
   const handleCreateProject = async (project: any) => {
     try {
       console.log('Creating project:', project);
-      const newProject = await projectService.createProject({
-        ...project,
-        userId: user?.id || '',
-      });
-      console.log('Project created successfully:', newProject);
+      
+      if (useAI) {
+        // AI-assisted project creation
+        console.log('Using AI to enhance project creation');
+        
+        // Add some AI-enhanced features (simulated for now)
+        const enhancedProject = {
+          ...project,
+          userId: user?.id || '',
+          description: project.description 
+            ? `${project.description}\n\nAI Enhanced: This project uses AI-assisted management features.` 
+            : 'AI Enhanced: This project uses AI-assisted management features.',
+          // Additional AI features could be added here
+        };
+        
+        // You could add AI-generated tasks based on the project description here
+        
+        const newProject = await projectService.createProject(enhancedProject);
+        console.log('AI-enhanced project created successfully:', newProject);
+      } else {
+        // Regular project creation
+        const newProject = await projectService.createProject({
+          ...project,
+          userId: user?.id || '',
+        });
+        console.log('Project created successfully:', newProject);
+      }
+      
       setIsNewProjectFormOpen(false);
-      // TODO: Refresh projects list
+      // Refresh the dashboard data
+      window.location.reload(); // Simple refresh for now
     } catch (error) {
       console.error('Error creating project:', error);
     }
   };
 
+  if (loading) {
+    return (
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+        <CircularProgress />
+      </Container>
+    );
+  }
+
+  // Create stats array from actual data
+  const stats = [
+    {
+      title: 'Total Projects',
+      value: dashboardData.totalProjects.toString(),
+      trend: '+0',
+      trendUp: true,
+      color: '#3b82f6',
+    },
+    {
+      title: 'Active Tasks',
+      value: dashboardData.activeTasks.toString(),
+      trend: '+0',
+      trendUp: true,
+      color: '#8b5cf6',
+    },
+    {
+      title: 'Team Members',
+      value: dashboardData.teamMembers.toString(),
+      trend: '+0',
+      trendUp: true,
+      color: '#10b981',
+    },
+    {
+      title: 'Completed Tasks',
+      value: dashboardData.completedTasks.toString(),
+      trend: '+0',
+      trendUp: true,
+      color: '#f59e0b',
+    },
+  ];
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 4, gap: 2 }}>
         <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
           Dashboard
         </Typography>
-        <IconButton
-          onClick={() => setIsNewProjectFormOpen(true)}
-          sx={{
-            background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
-            color: 'white',
-            '&:hover': {
-              background: 'linear-gradient(45deg, #2563eb, #7c3aed)',
-            },
-          }}
-        >
-          <AddIcon />
-        </IconButton>
+        
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <FormControlLabel
+            control={
+              <Switch 
+                checked={useAI}
+                onChange={(e) => setUseAI(e.target.checked)}
+                color="primary"
+              />
+            }
+            label={useAI ? "AI Assist" : "Manual"}
+            sx={{ mr: 1 }}
+          />
+
+          <Zoom in={true} style={{ transitionDelay: '300ms' }}>
+            <IconButton
+              onClick={() => setIsNewProjectFormOpen(true)}
+              sx={{
+                background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
+                color: 'white',
+                transition: 'transform 0.3s, background 0.3s',
+                '&:hover': {
+                  background: 'linear-gradient(45deg, #2563eb, #7c3aed)',
+                  transform: 'translateY(-4px)',
+                },
+                boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                position: 'relative',
+                p: 1.5,
+              }}
+            >
+              {useAI ? <AIIcon /> : <AddIcon />}
+            </IconButton>
+          </Zoom>
+        </Box>
       </Box>
 
       <Grid container spacing={3}>
@@ -255,124 +383,119 @@ export const Dashboard: React.FC = () => {
           </StatCard>
 
           {/* Recent Projects */}
-          <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>
             Recent Projects
           </Typography>
-          <Grid container spacing={2}>
-            {recentProjects.map((project) => (
-              <Grid item xs={12} sm={6} md={4} key={project.name}>
-                <ProjectCard>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <Box>
-                      <Typography variant="h6" sx={{ mb: 1 }}>{project.name}</Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                        <Chip
-                          label={project.priority}
-                          size="small"
-                          color={
-                            project.priority === 'High'
-                              ? 'error'
-                              : project.priority === 'Medium'
-                              ? 'warning'
-                              : 'success'
-                          }
-                        />
-                        <Chip
-                          label={project.status}
-                          size="small"
-                          color={
-                            project.status === 'Almost Done'
-                              ? 'success'
-                              : project.status === 'In Progress'
-                              ? 'primary'
-                              : 'info'
-                          }
-                        />
-                      </Box>
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            {dashboardData.recentProjects.length > 0 ? (
+              dashboardData.recentProjects.map((project) => (
+                <Grid item xs={12} sm={6} md={4} key={project.id}>
+                  <ProjectCard>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <Typography variant="h6" noWrap sx={{ maxWidth: '80%' }}>
+                        {project.name}
+                      </Typography>
+                      <Chip
+                        label={project.priority}
+                        size="small"
+                        color={
+                          project.priority === 'high' ? 'error' :
+                          project.priority === 'medium' ? 'warning' : 'success'
+                        }
+                      />
                     </Box>
-                    <IconButton size="small">
-                      <MoreVertIcon />
-                    </IconButton>
-                  </Box>
-                  
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Box sx={{ flex: 1, mr: 2 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                        <Typography variant="caption" color="text.secondary">
-                          Progress
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {project.progress}%
-                        </Typography>
-                      </Box>
+                    <Box sx={{ mb: 1 }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        {project.progress}% Complete
+                      </Typography>
                       <ProgressBar variant="determinate" value={project.progress} />
                     </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <AvatarGroup 
-                        max={3}
-                        sx={{
-                          '& .MuiAvatar-root': { width: 24, height: 24, fontSize: '0.75rem' }
-                        }}
-                      >
-                        {project.team.map((member) => (
-                          <Tooltip key={member.avatar} title={member.name}>
-                            <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
-                              {member.avatar}
-                            </Avatar>
-                          </Tooltip>
-                        ))}
-                      </AvatarGroup>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <CalendarTodayIcon fontSize="small" color="action" sx={{ mr: 0.5 }} />
+                        <Typography variant="body2" color="text.secondary">
+                          {project.dueDate ? format(new Date(project.dueDate), 'MMM dd') : 'No date'}
+                        </Typography>
+                      </Box>
+                      <Chip
+                        label={project.status}
+                        size="small"
+                        color={
+                          project.status === 'completed' ? 'success' :
+                          project.status === 'in_progress' ? 'warning' : 'info'
+                        }
+                      />
                     </Box>
-                  </Box>
-                </ProjectCard>
+                  </ProjectCard>
+                </Grid>
+              ))
+            ) : (
+              <Grid item xs={12}>
+                <Paper sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography color="text.secondary">No projects available</Typography>
+                </Paper>
               </Grid>
-            ))}
+            )}
           </Grid>
         </Grid>
 
         <Grid item xs={12} md={4}>
-          <StatCard>
-            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <CalendarTodayIcon /> Upcoming Tasks
-            </Typography>
-            <Stack spacing={2}>
-              {upcomingTasks.map((task) => (
-                <Box key={task.title} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="subtitle2">{task.title}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {task.project}
-                    </Typography>
+          {/* Upcoming Tasks */}
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Upcoming Tasks
+          </Typography>
+          <Paper sx={{ p: 2 }}>
+            {dashboardData.upcomingTasks.length > 0 ? (
+              <Stack spacing={2}>
+                {dashboardData.upcomingTasks.map((task, index) => (
+                  <Box
+                    key={index}
+                    sx={{
+                      p: 2,
+                      borderRadius: 1,
+                      bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                      border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}`,
+                    }}
+                  >
+                    <Typography variant="subtitle1">{task.title}</Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        {task.project}
+                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Chip
+                          label={task.priority}
+                          size="small"
+                          color={
+                            task.priority === 'high' ? 'error' :
+                            task.priority === 'medium' ? 'warning' : 'success'
+                          }
+                        />
+                        <Typography variant="body2" color="text.secondary">
+                          {task.date ? format(new Date(task.date), 'MMM dd') : 'No date'}
+                        </Typography>
+                      </Box>
+                    </Box>
                   </Box>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                    <Chip
-                      label={task.priority}
-                      size="small"
-                      color={
-                        task.priority === 'High'
-                          ? 'error'
-                          : task.priority === 'Medium'
-                          ? 'warning'
-                          : 'success'
-                      }
-                    />
-                    <Typography variant="caption" color="text.secondary">
-                      {new Date(task.date).toLocaleDateString()}
-                    </Typography>
-                  </Box>
-                </Box>
-              ))}
-            </Stack>
-          </StatCard>
+                ))}
+              </Stack>
+            ) : (
+              <Box sx={{ p: 3, textAlign: 'center' }}>
+                <Typography color="text.secondary">No upcoming tasks</Typography>
+              </Box>
+            )}
+          </Paper>
         </Grid>
       </Grid>
 
+      {/* Create Task Modal */}
       <CreateTaskModal
         open={isCreateTaskModalOpen}
         onClose={() => setIsCreateTaskModalOpen(false)}
         onSubmit={handleCreateTask}
       />
 
+      {/* New Project Form */}
       <NewProjectForm
         open={isNewProjectFormOpen}
         onClose={() => setIsNewProjectFormOpen(false)}

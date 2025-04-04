@@ -96,7 +96,7 @@ export const ProjectDetails: React.FC = () => {
   const [newTask, setNewTask] = useState<Partial<Task>>({
     title: '',
     description: '',
-    status: 'pending',
+    status: 'todo',
     priority: 'medium',
   });
 
@@ -174,15 +174,38 @@ export const ProjectDetails: React.FC = () => {
     if (taskIndex === -1) return;
 
     const originalTask = project.tasks[taskIndex];
+    
+    console.log('TASK UPDATE START:', { 
+      taskId, 
+      field, 
+      value, 
+      originalStatus: originalTask.status,
+      originalPriority: originalTask.priority,
+      originalCompleted: originalTask.completed
+    });
+
+    // Create a copy of the task with the updated field
+    const updatedTask = {
+      ...originalTask,
+      [field]: value,
+      // If status is being updated, also update the completed flag
+      ...(field === 'status' && { completed: value === 'completed' }),
+      updatedAt: new Date().toISOString()
+    };
+
+    console.log('TASK AFTER LOCAL UPDATE:', {
+      updatedStatus: updatedTask.status,
+      updatedPriority: updatedTask.priority,
+      updatedCompleted: updatedTask.completed,
+      updatedField: field,
+      updatedValue: value
+    });
 
     // Optimistic UI update
     const updatedTasksOptimistic = [...project.tasks];
-    updatedTasksOptimistic[taskIndex] = {
-      ...originalTask,
-      [field]: value,
-      updatedAt: new Date().toISOString() // Update timestamp optimistically
-    };
+    updatedTasksOptimistic[taskIndex] = updatedTask;
 
+    // Update the project state with the optimistic update
     setProject(prevProject => {
       if (!prevProject) return null;
       return {
@@ -192,60 +215,74 @@ export const ProjectDetails: React.FC = () => {
     });
 
     try {
-      // Prepare data for the service call (ensure all required fields are present if needed)
+      // Flatten the task data for the API call
       const taskDataForUpdate = {
-        ...originalTask, // Use original task data as base
-        [field]: value,   // Apply the specific change
-        updatedAt: new Date().toISOString(), // Ensure this matches optimistic update
-        // Ensure required fields are included if the service expects the full object
+        ...updatedTask,
         projectId: project.id,
-        createdAt: originalTask.createdAt, // Keep original createdAt
-        subtasks: originalTask.subtasks || [], // Keep subtasks
-        // Add other fields from Task type if necessary for updateTask method
-        title: originalTask.title,
-        description: originalTask.description,
-        completed: field === 'status' ? (value === 'completed') : originalTask.completed, // Update completed based on status change
-        priority: field === 'priority' ? value : originalTask.priority,
-        status: field === 'status' ? value : originalTask.status,
-        orderIndex: originalTask.orderIndex,
-        startDate: originalTask.startDate,
-        endDate: originalTask.endDate,
-        assignedTo: originalTask.assignedTo,
-        parentId: originalTask.parentId,
+        subtasks: updatedTask.subtasks || []
       };
 
-      // Update the task in the database
-      // Note: Ensure projectService.updateTask accepts the full Task object or adjust taskDataForUpdate accordingly
+      console.log('SENDING TASK TO SERVER:', {
+        id: taskDataForUpdate.id,
+        status: taskDataForUpdate.status,
+        priority: taskDataForUpdate.priority,
+        completed: taskDataForUpdate.completed,
+        [field]: taskDataForUpdate[field]
+      });
+
+      // Call the API to update the task
       const updatedTaskFromServer = await projectService.updateTask(taskDataForUpdate as Task);
 
-      // Update the local state with the definitive data from the server
+      console.log('RECEIVED FROM SERVER:', {
+        id: updatedTaskFromServer.id,
+        statusFromServer: updatedTaskFromServer.status,
+        priorityFromServer: updatedTaskFromServer.priority,
+        completedFromServer: updatedTaskFromServer.completed,
+        [field]: updatedTaskFromServer[field]
+      });
+
+      // Update the UI with the server response
       setProject(prevProject => {
         if (!prevProject) return null;
-        const finalTasks = [...prevProject.tasks];
-        const serverTaskIndex = finalTasks.findIndex(t => t.id === taskId);
-        if (serverTaskIndex !== -1) {
-          finalTasks[serverTaskIndex] = updatedTaskFromServer;
-        }
+        
+        const finalTasks = prevProject.tasks.map(t => {
+          if (t.id === taskId) {
+            console.log('UPDATING TASK IN STATE:', {
+              id: t.id,
+              oldStatus: t.status,
+              newStatus: updatedTaskFromServer.status,
+              oldPriority: t.priority,
+              newPriority: updatedTaskFromServer.priority,
+              oldCompleted: t.completed,
+              newCompleted: updatedTaskFromServer.completed
+            });
+            return updatedTaskFromServer;
+          }
+          return t;
+        });
+        
         return {
           ...prevProject,
-          tasks: finalTasks,
+          tasks: finalTasks
         };
       });
 
+      // Clear editing state if this was a title update
+      if (field === 'title') {
+        setIsEditing(null);
+      }
     } catch (err) {
       console.error('Failed to update task:', err);
       setError(`Failed to update task ${field}`);
-      // Rollback optimistic update on error
+      
+      // Revert to the original task on error
       setProject(prevProject => {
         if (!prevProject) return null;
-        const revertedTasks = [...prevProject.tasks];
-        const errorTaskIndex = revertedTasks.findIndex(t => t.id === taskId);
-        if (errorTaskIndex !== -1) {
-          revertedTasks[errorTaskIndex] = originalTask; // Revert to original task
-        }
         return {
           ...prevProject,
-          tasks: revertedTasks,
+          tasks: prevProject.tasks.map(t => 
+            t.id === taskId ? originalTask : t
+          )
         };
       });
     }
@@ -255,22 +292,47 @@ export const ProjectDetails: React.FC = () => {
     if (!project || !projectId) return;
 
     try {
-      // Update all tasks to completed
-      const updatedTasks = await Promise.all(
-        project.tasks.map(task =>
-          projectService.updateTask(task.id, { status: 'completed' })
-        )
-      );
+      console.log('Starting project completion process...');
+      setIsCompleteDialogOpen(false);
 
-      // Update project status
-      const updatedProject = await projectService.updateProject(projectId, {
+      // First, update the project status
+      console.log('Updating project status to completed');
+      const updatedProject = await projectService.updateProject({
         ...project,
-        status: 'completed',
-        tasks: updatedTasks,
+        status: 'completed'
       });
 
-      setProject(updatedProject);
-      setIsCompleteDialogOpen(false);
+      // Store the updated tasks here to apply them to our state later
+      const completedTasks = [];
+
+      // Update all tasks to completed (one by one to avoid rate limiting)
+      console.log('Updating all tasks to completed...');
+      for (const task of project.tasks) {
+        try {
+          const updatedTask = await projectService.updateTask({
+            ...task,
+            status: 'completed',
+            completed: true
+          });
+          completedTasks.push(updatedTask);
+        } catch (err) {
+          console.error(`Failed to update task ${task.id}:`, err);
+          // Continue with other tasks even if one fails
+          completedTasks.push({
+            ...task,
+            status: 'completed',
+            completed: true
+          });
+        }
+      }
+
+      // Update the UI with both the updated project and tasks
+      console.log('Updating UI with completed project and tasks');
+      setProject({
+        ...updatedProject,
+        tasks: completedTasks
+      });
+      
     } catch (err) {
       console.error('Failed to complete project:', err);
       setError('Failed to complete project');
@@ -592,18 +654,39 @@ export const ProjectDetails: React.FC = () => {
                     <FormControl size="small">
                       <Select
                         value={task.status || 'todo'}
+                        onClick={(e) => e.stopPropagation()} 
                         onChange={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          handleTaskUpdate(task.id, 'status', e.target.value as Task['status']);
+                          // Prevent the page from scrolling
+                          const value = e.target.value as Task['status'];
+                          console.log(`Changing status to: ${value}`);
+                          handleTaskUpdate(task.id, 'status', value);
                         }}
                         size="small"
+                        MenuProps={{
+                          anchorOrigin: {
+                            vertical: 'bottom',
+                            horizontal: 'left',
+                          },
+                          transformOrigin: {
+                            vertical: 'top',
+                            horizontal: 'left',
+                          },
+                          PaperProps: {
+                            style: {
+                              maxHeight: 200
+                            }
+                          }
+                        }}
                         sx={{
+                          minWidth: '100px',
                           '& .MuiSelect-select': {
                             backgroundColor: (theme) => 
                               theme.palette[getStatusColor(task.status || 'todo')].light,
                             color: (theme) => 
                               theme.palette[getStatusColor(task.status || 'todo')].contrastText,
+                            paddingY: 0.5,
                           },
                         }}
                       >
@@ -616,18 +699,39 @@ export const ProjectDetails: React.FC = () => {
                     <FormControl size="small">
                       <Select
                         value={task.priority || 'medium'}
+                        onClick={(e) => e.stopPropagation()}
                         onChange={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          handleTaskUpdate(task.id, 'priority', e.target.value as Task['priority']);
+                          // Prevent the page from scrolling
+                          const value = e.target.value as Task['priority'];
+                          console.log(`Changing priority to: ${value}`);
+                          handleTaskUpdate(task.id, 'priority', value);
                         }}
                         size="small"
+                        MenuProps={{
+                          anchorOrigin: {
+                            vertical: 'bottom',
+                            horizontal: 'left',
+                          },
+                          transformOrigin: {
+                            vertical: 'top',
+                            horizontal: 'left',
+                          },
+                          PaperProps: {
+                            style: {
+                              maxHeight: 200
+                            }
+                          }
+                        }}
                         sx={{
+                          minWidth: '100px',
                           '& .MuiSelect-select': {
                             backgroundColor: (theme) => 
                               theme.palette[getPriorityColor(task.priority || 'medium')].light,
                             color: (theme) => 
                               theme.palette[getPriorityColor(task.priority || 'medium')].contrastText,
+                            paddingY: 0.5,
                           },
                         }}
                       >
@@ -700,7 +804,7 @@ export const ProjectDetails: React.FC = () => {
                   label="Status"
                   onChange={(e) => setNewTask({ ...newTask, status: e.target.value })}
                 >
-                  <MenuItem value="pending">Pending</MenuItem>
+                  <MenuItem value="todo">To Do</MenuItem>
                   <MenuItem value="in_progress">In Progress</MenuItem>
                   <MenuItem value="completed">Completed</MenuItem>
                 </Select>

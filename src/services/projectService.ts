@@ -148,21 +148,41 @@ export class ProjectService {
   }
 
   async updateProject(project: Project): Promise<Project> {
+    console.log('ProjectService.updateProject called with:', {
+      id: project.id,
+      title: project.title,
+      status: project.status,
+      priority: project.priority
+    });
+    
     const { data, error } = await supabase
       .from('projects')
       .update({
         title: project.title,
         description: project.description,
+        status: project.status,
+        priority: project.priority,
         updated_at: new Date().toISOString(),
       })
       .eq('id', project.id)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error updating project:', error);
+      throw error;
+    }
     if (!data) throw new Error('Failed to update project');
 
-    return this.mapProjectRow(data);
+    console.log('Project updated in database, received:', data);
+    
+    // We need to preserve the tasks since they're not returned in the update operation
+    const tasksFromProject = project.tasks || [];
+    const mappedProject = this.mapProjectRow(data);
+    return {
+      ...mappedProject,
+      tasks: tasksFromProject
+    };
   }
 
   async deleteProject(projectId: string): Promise<void> {
@@ -194,11 +214,21 @@ export class ProjectService {
   }
 
   async updateTask(task: Task): Promise<Task> {
+    console.log('ProjectService.updateTask called with:', {
+      id: task.id,
+      title: task.title,
+      status: task.status,
+      priority: task.priority,
+      completed: task.completed
+    });
+    
     const { data, error } = await supabase
       .from('tasks')
       .update({
         title: task.title,
         description: task.description,
+        status: task.status,
+        priority: task.priority,
         completed: task.completed,
         updated_at: new Date().toISOString(),
       })
@@ -206,9 +236,13 @@ export class ProjectService {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error updating task:', error);
+      throw error;
+    }
     if (!data) throw new Error('Failed to update task');
 
+    console.log('Task updated in database, received:', data);
     return this.mapTaskRow(data);
   }
 
