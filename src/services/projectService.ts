@@ -5,64 +5,81 @@ import type { Project, Task } from '../types';
 type ProjectRow = Database['public']['Tables']['projects']['Row'];
 type TaskRow = Database['public']['Tables']['tasks']['Row'];
 
-const mapTaskRow = (row: any): Task => {
-  return {
-    id: row.id,
-    title: row.title,
-    description: row.description,
-    status: row.status,
-    priority: row.priority,
-    assignedTo: row.assigned_to,
-    startDate: row.start_date,
-    endDate: row.end_date,
-    orderIndex: row.order_index,
-    parentId: row.parent_id,
-    completed: row.completed,
-    projectId: row.project_id,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-};
+export class ProjectService {
+  private mapTaskRow(row: any): Task {
+    return {
+      id: row.id,
+      title: row.title,
+      description: row.description,
+      status: row.status,
+      priority: row.priority,
+      assignedTo: row.assigned_to,
+      startDate: row.start_date,
+      endDate: row.end_date,
+      orderIndex: row.order_index,
+      parentId: row.parent_id,
+      completed: row.completed,
+      projectId: row.project_id,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      subtasks: [], // Initialize empty subtasks array
+    };
+  }
 
-const mapProjectRow = (row: any): Project => {
-  return {
-    id: row.id,
-    title: row.title,
-    description: row.description,
-    status: row.status,
-    priority: row.priority,
-    userId: row.user_id,
-    startDate: row.start_date,
-    endDate: row.end_date,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    tasks: row.tasks ? row.tasks.map(mapTaskRow) : [],
-  };
-};
+  private mapProjectRow(row: any): Project {
+    return {
+      id: row.id,
+      title: row.title,
+      description: row.description,
+      status: row.status,
+      priority: row.priority,
+      startDate: row.start_date,
+      endDate: row.end_date,
+      userId: row.user_id,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      tasks: (row.tasks || []).map((task: any) => this.mapTaskRow(task)),
+    };
+  }
 
-export const projectService = {
   async getProjects(): Promise<Project[]> {
-    try {
-      console.log('Fetching projects...');
-      const { data, error } = await supabase
-        .from('projects')
-        .select(`
-          *,
-          tasks (*)
-        `)
-        .order('created_at', { ascending: false });
+    const { data, error } = await supabase
+      .from('projects')
+      .select(`
+        *,
+        tasks:tasks!project_id(*)
+      `)
+      .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching projects:', error);
-        throw error;
-      }
-      console.log('Projects fetched successfully:', data);
-      return data.map(mapProjectRow);
-    } catch (error) {
-      console.error('Error in getProjects:', error);
+    if (error) {
+      console.error('Error fetching projects:', error);
       throw error;
     }
-  },
+
+    return data.map((row) => this.mapProjectRow(row));
+  }
+
+  async getProjectById(id: string): Promise<Project> {
+    const { data, error } = await supabase
+      .from('projects')
+      .select(`
+        *,
+        tasks:tasks!project_id(*)
+      `)
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching project:', error);
+      throw error;
+    }
+
+    if (!data) {
+      throw new Error('Project not found');
+    }
+
+    return this.mapProjectRow(data);
+  }
 
   async createProject(projectData: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>): Promise<Project> {
     try {
@@ -115,7 +132,7 @@ export const projectService = {
         .from('projects')
         .select(`
           *,
-          tasks (*)
+          tasks:tasks!project_id(*)
         `)
         .eq('id', project.id)
         .single();
@@ -123,12 +140,12 @@ export const projectService = {
       if (fetchError) throw fetchError;
 
       console.log('Complete project fetched:', completeProject);
-      return mapProjectRow(completeProject);
+      return this.mapProjectRow(completeProject);
     } catch (error) {
       console.error('Error in createProject:', error);
       throw error;
     }
-  },
+  }
 
   async updateProject(project: Project): Promise<Project> {
     const { data, error } = await supabase
@@ -145,8 +162,8 @@ export const projectService = {
     if (error) throw error;
     if (!data) throw new Error('Failed to update project');
 
-    return mapProjectRow(data);
-  },
+    return this.mapProjectRow(data);
+  }
 
   async deleteProject(projectId: string): Promise<void> {
     const { error } = await supabase
@@ -155,7 +172,7 @@ export const projectService = {
       .eq('id', projectId);
 
     if (error) throw error;
-  },
+  }
 
   async createTask(task: Omit<Task, 'id' | 'createdAt'>): Promise<Task> {
     const { data, error } = await supabase
@@ -173,8 +190,8 @@ export const projectService = {
     if (error) throw error;
     if (!data) throw new Error('Failed to create task');
 
-    return mapTaskRow(data);
-  },
+    return this.mapTaskRow(data);
+  }
 
   async updateTask(task: Task): Promise<Task> {
     const { data, error } = await supabase
@@ -192,8 +209,8 @@ export const projectService = {
     if (error) throw error;
     if (!data) throw new Error('Failed to update task');
 
-    return mapTaskRow(data);
-  },
+    return this.mapTaskRow(data);
+  }
 
   async deleteTask(taskId: string): Promise<void> {
     const { error } = await supabase
@@ -202,5 +219,8 @@ export const projectService = {
       .eq('id', taskId);
 
     if (error) throw error;
-  },
-}; 
+  }
+}
+
+// Create and export an instance of ProjectService
+export const projectService = new ProjectService(); 

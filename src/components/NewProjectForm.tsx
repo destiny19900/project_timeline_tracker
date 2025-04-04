@@ -28,13 +28,11 @@ import { supabase } from '../lib/supabase';
 interface NewProjectFormProps {
   open: boolean;
   onClose: () => void;
-  onProjectCreate: (project: Project) => void;
 }
 
 export const NewProjectForm: React.FC<NewProjectFormProps> = ({
   open,
   onClose,
-  onProjectCreate,
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -113,11 +111,10 @@ export const NewProjectForm: React.FC<NewProjectFormProps> = ({
       console.log('Project data to be sent:', projectData);
 
       console.log('Calling projectService.createProject...');
-      const newProject = await projectService.createProject(projectData);
-      console.log('Project created successfully:', newProject);
+      await projectService.createProject(projectData);
+      console.log('Project created successfully');
 
       setSuccess(true);
-      onProjectCreate(newProject);
       setTimeout(() => {
         onClose();
         navigate('/app/projects');

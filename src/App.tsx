@@ -21,6 +21,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { AdminLogin } from './pages/admin/AdminLogin';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { Projects } from './pages/Projects';
+import { ProjectDetails } from './pages/ProjectDetails';
 
 const App: React.FC = () => {
   return (
@@ -48,6 +49,7 @@ const App: React.FC = () => {
                           <Route path="dashboard" element={<Dashboard />} />
                           <Route path="new-project" element={<NewProject />} />
                           <Route path="projects" element={<Projects />} />
+                          <Route path="projects/:projectId" element={<ProjectDetails />} />
                           <Route path="/tasks" element={<DashboardContent />} />
                           <Route path="/team" element={<DashboardContent />} />
                           <Route path="/documents" element={<DashboardContent />} />

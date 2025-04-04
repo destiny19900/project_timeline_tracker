@@ -11,13 +11,17 @@ import {
   Chip,
   CircularProgress,
   Alert,
+  Paper,
+  Stack,
 } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import { Add as AddIcon } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { NewProjectForm } from '../components/NewProjectForm';
 import { projectService } from '../services/projectService';
 import type { Project } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const getPriorityColor = (priority: string) => {
   switch (priority) {
@@ -45,7 +49,28 @@ const getStatusColor = (status: string) => {
   }
 };
 
+const ProjectCard = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(3),
+  display: 'flex',
+  flexDirection: 'column',
+  gap: theme.spacing(2),
+  cursor: 'pointer',
+  transition: 'all 0.3s ease',
+  background: theme.palette.mode === 'dark'
+    ? 'linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)'
+    : 'linear-gradient(145deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%)',
+  backdropFilter: 'blur(10px)',
+  border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+  '&:hover': {
+    transform: 'translateY(-4px)',
+    boxShadow: theme.palette.mode === 'dark'
+      ? '0 8px 32px rgba(0,0,0,0.3)'
+      : '0 8px 32px rgba(0,0,0,0.1)',
+  },
+}));
+
 export const Projects: React.FC = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,43 +78,55 @@ export const Projects: React.FC = () => {
   const [isNewProjectFormOpen, setIsNewProjectFormOpen] = useState(false);
 
   useEffect(() => {
-    loadProjects();
+    const fetchProjects = async () => {
+      try {
+        const fetchedProjects = await projectService.getProjects();
+        setProjects(fetchedProjects);
+      } catch (err) {
+        setError('Failed to load projects');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProjects();
   }, []);
 
-  const loadProjects = async () => {
+  const handleProjectCreate = async (project: Project) => {
     try {
-      setLoading(true);
-      setError(null);
-      const data = await projectService.getProjects();
-      setProjects(data);
+      await projectService.createProject(project);
+      const updatedProjects = await projectService.getProjects();
+      setProjects(updatedProjects);
+      setIsNewProjectFormOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load projects');
-    } finally {
-      setLoading(false);
+      console.error('Failed to create project:', err);
+      setError('Failed to create project');
     }
-  };
-
-  const handleProjectCreate = (newProject: Project) => {
-    setProjects(prev => [newProject, ...prev]);
   };
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <CircularProgress />
       </Box>
     );
   }
 
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography color="error">{error}</Typography>
+      </Box>
+    );
+  }
+
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
-        <Typography variant="h4" component="h1">
-          Projects
-        </Typography>
+    <Box sx={{ p: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4">Projects</Typography>
         <Button
           variant="contained"
-          color="primary"
           startIcon={<AddIcon />}
           onClick={() => setIsNewProjectFormOpen(true)}
         >
@@ -97,60 +134,59 @@ export const Projects: React.FC = () => {
         </Button>
       </Box>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-
       <Grid container spacing={3}>
-        {projects.map((project) => (
+        {projects.map((project, index) => (
           <Grid item xs={12} sm={6} md={4} key={project.id}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
+              transition={{ delay: index * 0.1 }}
             >
-              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                <CardContent sx={{ flexGrow: 1 }}>
-                  <Typography variant="h6" component="h2" gutterBottom>
+              <ProjectCard>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <Typography variant="h6" sx={{ flex: 1 }}>
                     {project.title}
                   </Typography>
-                  <Typography color="text.secondary" paragraph>
-                    {project.description}
-                  </Typography>
-                  <Box display="flex" gap={1} mb={2}>
-                    <Chip
-                      label={project.status}
-                      color={getStatusColor(project.status)}
-                      size="small"
-                    />
-                    <Chip
-                      label={project.priority}
-                      color={getPriorityColor(project.priority)}
-                      size="small"
-                    />
-                  </Box>
+                  <Chip
+                    label={project.status}
+                    size="small"
+                    color={
+                      project.status === 'completed' ? 'success' :
+                      project.status === 'in_progress' ? 'warning' : 'default'
+                    }
+                  />
+                </Box>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  {project.description}
+                </Typography>
+                <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+                  <Chip
+                    label={project.priority}
+                    size="small"
+                    color={
+                      project.priority === 'high' ? 'error' :
+                      project.priority === 'medium' ? 'warning' : 'success'
+                    }
+                  />
+                  <Chip
+                    label={`${project.tasks.length} tasks`}
+                    size="small"
+                    variant="outlined"
+                  />
+                </Stack>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Typography variant="body2" color="text.secondary">
-                    Tasks: {project.tasks.length}
+                    {project.startDate} - {project.endDate}
                   </Typography>
-                  {project.startDate && (
-                    <Typography variant="body2" color="text.secondary">
-                      Start: {new Date(project.startDate).toLocaleDateString()}
-                    </Typography>
-                  )}
-                  {project.endDate && (
-                    <Typography variant="body2" color="text.secondary">
-                      End: {new Date(project.endDate).toLocaleDateString()}
-                    </Typography>
-                  )}
-                </CardContent>
-                <CardActions>
-                  <Button size="small" color="primary">
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => navigate(`/app/projects/${project.id}`)}
+                  >
                     View Details
                   </Button>
-                </CardActions>
-              </Card>
+                </Box>
+              </ProjectCard>
             </motion.div>
           </Grid>
         ))}
@@ -159,8 +195,7 @@ export const Projects: React.FC = () => {
       <NewProjectForm
         open={isNewProjectFormOpen}
         onClose={() => setIsNewProjectFormOpen(false)}
-        onProjectCreate={handleProjectCreate}
       />
-    </Container>
+    </Box>
   );
 }; 
