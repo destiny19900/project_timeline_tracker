@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -8,24 +8,47 @@ import {
   Button,
   Box,
   Typography,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   CircularProgress,
   Snackbar,
   Alert,
   Slider,
   Divider,
   Chip,
+  LinearProgress,
+  Paper,
 } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import { motion } from 'framer-motion';
+import InfoIcon from '@mui/icons-material/Info';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { projectService } from '../services/projectService';
 import { aiService } from '../services/aiService';
-import { ProjectPromptData } from '../types/ai';
+import { ProjectPromptData, AIUsageLimits } from '../types/ai';
+import { format } from 'date-fns';
+
+// Explicitly define the expected structure for project creation
+// This matches the actual expected input for projectService.createProject
+interface ProjectInput {
+  title: string;
+  description: string;
+  status: 'not_started' | 'in_progress' | 'completed' | 'on_hold';
+  priority: 'low' | 'medium' | 'high';
+  startDate: string | null;
+  endDate: string | null;
+  userId: string;
+  tasks: Array<{
+    title: string;
+    description: string;
+    status: 'todo' | 'in_progress' | 'completed' | 'blocked';
+    priority: 'low' | 'medium' | 'high';
+    startDate: string | null;
+    endDate: string | null;
+    completed: boolean;
+    orderIndex: number;
+    parentId: string | null;
+    assignedTo: string | null;
+  }>;
+}
 
 interface AIProjectFormProps {
   open: boolean;
@@ -43,12 +66,29 @@ export const AIProjectForm: React.FC<AIProjectFormProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [usageLimitInfo, setUsageLimitInfo] = useState<AIUsageLimits | null>(null);
   const [promptData, setPromptData] = useState<ProjectPromptData>({
     description: '',
     numTasks: 5,
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
   });
+  
+  // Check usage limits when the component mounts and when the user changes
+  useEffect(() => {
+    if (user) {
+      const checkLimits = async () => {
+        try {
+          const limits = await aiService.checkUsageLimit(user.id);
+          setUsageLimitInfo(limits);
+        } catch (error) {
+          console.error('Error checking AI usage limits:', error);
+        }
+      };
+      
+      checkLimits();
+    }
+  }, [user, open]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,26 +98,108 @@ export const AIProjectForm: React.FC<AIProjectFormProps> = ({
     setError(null);
     
     try {
+      // Collect validation errors instead of throwing on the first error
+      const validationErrors: string[] = [];
+      
+      // Validate dates
+      const start = new Date(promptData.startDate);
+      const end = new Date(promptData.endDate);
+      
+      if (isNaN(start.getTime())) {
+        validationErrors.push("Start date is invalid. Please enter a valid date in YYYY-MM-DD format.");
+      }
+      
+      if (isNaN(end.getTime())) {
+        validationErrors.push("End date is invalid. Please enter a valid date in YYYY-MM-DD format.");
+      }
+      
+      if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && start > end) {
+        validationErrors.push("Start date must be before end date. Please adjust your project timeline.");
+      }
+
+      // Validate description
+      if (!promptData.description.trim()) {
+        validationErrors.push("Project description is required. Please describe what you want to accomplish.");
+      } else {
+        if (promptData.description.trim().length < 10) {
+          validationErrors.push("Project description must be at least 10 characters long. Please provide more details about your project.");
+        }
+        
+        if (promptData.description.trim().length > 5000) {
+          validationErrors.push("Project description is too long. Please limit your description to 5000 characters.");
+        }
+      }
+      
+      // Validate task count
+      if (promptData.numTasks < 1 || promptData.numTasks > 20) {
+        validationErrors.push("Number of tasks must be between 1 and 20. Please adjust the task slider.");
+      }
+      
+      // If we have validation errors, show them and stop
+      if (validationErrors.length > 0) {
+        const errorMessage = validationErrors.length === 1 
+          ? validationErrors[0] 
+          : "Please fix the following issues:\n• " + validationErrors.join("\n• ");
+        
+        setError(errorMessage);
+        setLoading(false);
+        return;
+      }
+      
+      // Check usage limit
+      const limits = await aiService.checkUsageLimit(user.id);
+      setUsageLimitInfo(limits);
+      
+      if (limits.hasReachedLimit) {
+        const resetMessage = limits.resetTime 
+          ? `You can create more projects on ${format(limits.resetTime, 'MMM dd, yyyy')}.`
+          : 'You can create more projects in about a week.';
+        setError(`You've reached the limit of 10 AI-generated projects per week. ${resetMessage}`);
+        setLoading(false);
+        return;
+      }
+      
+      // Continue with API calls and processing only if validation passes
+      
       // Call the OpenAI service to generate a project based on the prompt
       const aiResponse = await callAIService(promptData);
       
       // Process the AI response into a valid project structure
-      const projectData = await parseAIResponse(aiResponse);
+      const aiResponseData = await parseAIResponse(aiResponse);
       
-      // Ensure all tasks have status "todo" and completed=false
-      if (projectData.tasks && projectData.tasks.length > 0) {
-        projectData.tasks = projectData.tasks.map(task => ({
-          ...task,
-          status: 'todo',
-          completed: false
-        }));
-      }
+      // Prepare project data for creation
+      const projectInput: ProjectInput = {
+        title: aiResponseData.title,
+        description: aiResponseData.description,
+        status: aiResponseData.status,
+        priority: aiResponseData.priority,
+        startDate: aiResponseData.startDate,
+        endDate: aiResponseData.endDate,
+        userId: user.id,
+        tasks: (aiResponseData.tasks || []).map((task: any, index: number) => ({
+          title: task.title,
+          description: task.description || '',
+          status: task.status || 'todo',
+          priority: task.priority || 'medium',
+          startDate: task.startDate,
+          endDate: task.endDate,
+          completed: task.completed === undefined ? false : task.completed,
+          orderIndex: task.orderIndex ?? index,
+          parentId: task.parentId || null,
+          assignedTo: null
+        }))
+      };
       
-      // Save the project to the database
-      const createdProject = await projectService.createProject({
-        ...projectData,
-        userId: user.id
-      });
+      // Save the project to the database with type assertion
+      // This is safe because ProjectInput matches the expected structure
+      const createdProject = await projectService.createProject(projectInput as any);
+      
+      // Record that the user has generated a project
+      await aiService.recordProjectGeneration(user.id, createdProject.id);
+      
+      // Update the usage info
+      const updatedLimits = await aiService.checkUsageLimit(user.id);
+      setUsageLimitInfo(updatedLimits);
       
       console.log('AI Project created successfully:', createdProject);
       
@@ -91,7 +213,13 @@ export const AIProjectForm: React.FC<AIProjectFormProps> = ({
       navigate(`/app/projects/${createdProject.id}`);
     } catch (err) {
       console.error('Error creating AI project:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create project with AI');
+      if (err instanceof Error) {
+        setError(err.message);
+      } else if (typeof err === 'string') {
+        setError(err);
+      } else {
+        setError('Failed to create project with AI. Please try again later.');
+      }
     } finally {
       setLoading(false);
     }
@@ -102,7 +230,28 @@ export const AIProjectForm: React.FC<AIProjectFormProps> = ({
       return await aiService.generateProject(promptData);
     } catch (error) {
       console.error('Error calling OpenAI API:', error);
-      throw new Error('Failed to generate project with AI. Please check your API key configuration.');
+      
+      // Extract meaningful error messages
+      if (error instanceof Error) {
+        // Handle specific validation errors
+        if (error.message.startsWith('Please correct the following:')) {
+          throw error; // Already formatted for user display
+        } else if (error.message.includes('Invalid project data')) {
+          throw new Error(error.message); // Already a user-friendly validation error
+        } else if (error.message.includes('OpenAI API key is invalid')) {
+          throw new Error('AI service authentication failed. Please contact support.');
+        } else if (error.message.includes('OpenAI rate limit exceeded')) {
+          throw new Error('AI service is temporarily unavailable due to high demand. Please try again in a few minutes.');
+        } else if (error.message.includes('OpenAI service is currently unavailable')) {
+          throw new Error('AI service is temporarily unavailable. Please try again later.');
+        } else if (error.message.includes('OpenAI API error')) {
+          throw new Error('Error communicating with AI service. Please check your internet connection and try again.');
+        } else if (error.message.includes('not configured')) {
+          throw new Error('AI service is not properly configured. Please contact support.');
+        }
+      }
+      
+      throw new Error('Unable to generate project with AI. Please try again later.');
     }
   };
   
@@ -111,7 +260,18 @@ export const AIProjectForm: React.FC<AIProjectFormProps> = ({
       return await aiService.parseAIResponse(response);
     } catch (error) {
       console.error('Error parsing AI response:', error);
-      throw new Error('Failed to parse AI response');
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to parse') || error.message.includes('Invalid AI response')) {
+          throw new Error('The AI generated an invalid response. Please try again with a more detailed and specific project description.');
+        } else if (error.message.includes('JSON')) {
+          throw new Error('Error processing the AI response format. Please try again with a clearer project description.');
+        } else if (error.message.includes('validation')) {
+          throw new Error('The generated project data was incomplete. Please provide more details in your description and try again.');
+        }
+      }
+      
+      throw new Error('Error processing AI response. Please try a different project description.');
     }
   };
   
@@ -185,6 +345,54 @@ export const AIProjectForm: React.FC<AIProjectFormProps> = ({
               }
             }}
           >
+            {usageLimitInfo && (
+              <Paper
+                elevation={0}
+                sx={{ 
+                  p: 2, 
+                  mb: 3, 
+                  borderRadius: 2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  bgcolor: 'background.paper'
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <InfoIcon sx={{ mr: 1, color: 'primary.main' }} fontSize="small" />
+                  <Typography variant="subtitle2">
+                    AI Project Generation Limit
+                  </Typography>
+                </Box>
+                
+                <Box sx={{ mb: 1 }}>
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={((10 - usageLimitInfo.remaining) / 10) * 100} 
+                    sx={{ 
+                      height: 8, 
+                      borderRadius: 4,
+                      mb: 1,
+                      bgcolor: 'background.default',
+                      '& .MuiLinearProgress-bar': {
+                        bgcolor: usageLimitInfo.remaining > 3 
+                          ? 'success.main' 
+                          : usageLimitInfo.remaining > 0 
+                            ? 'warning.main' 
+                            : 'error.main',
+                      }
+                    }}
+                  />
+                </Box>
+                
+                <Typography variant="body2" color="text.secondary">
+                  {usageLimitInfo.hasReachedLimit 
+                    ? `You've reached the limit of 10 AI-generated projects per week. You can create more projects on ${usageLimitInfo.resetTime ? format(usageLimitInfo.resetTime, 'MMM dd, yyyy') : 'in about a week'}.`
+                    : `You have ${usageLimitInfo.remaining} of 10 AI project generations remaining this week.`
+                  }
+                </Typography>
+              </Paper>
+            )}
+            
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                 Describe your project in detail. The AI will analyze your description and generate a complete project plan with tasks and timeline.
@@ -199,6 +407,7 @@ export const AIProjectForm: React.FC<AIProjectFormProps> = ({
                 fullWidth
                 required
                 placeholder="Describe your project in detail. What are the goals? What needs to be accomplished? What are the key deliverables?"
+                disabled={usageLimitInfo?.hasReachedLimit}
               />
               
               <Box>
@@ -211,8 +420,9 @@ export const AIProjectForm: React.FC<AIProjectFormProps> = ({
                   step={1}
                   marks
                   min={1}
-                  max={10}
+                  max={20}
                   valueLabelDisplay="auto"
+                  disabled={usageLimitInfo?.hasReachedLimit}
                 />
               </Box>
               
@@ -231,6 +441,7 @@ export const AIProjectForm: React.FC<AIProjectFormProps> = ({
                   fullWidth
                   required
                   InputLabelProps={{ shrink: true }}
+                  disabled={usageLimitInfo?.hasReachedLimit}
                 />
                 
                 <TextField
@@ -241,6 +452,7 @@ export const AIProjectForm: React.FC<AIProjectFormProps> = ({
                   fullWidth
                   required
                   InputLabelProps={{ shrink: true }}
+                  disabled={usageLimitInfo?.hasReachedLimit}
                 />
               </Box>
             </Box>
@@ -267,7 +479,7 @@ export const AIProjectForm: React.FC<AIProjectFormProps> = ({
               type="submit"
               variant="contained"
               color="primary"
-              disabled={loading || !promptData.description.trim()}
+              disabled={loading || !promptData.description.trim() || usageLimitInfo?.hasReachedLimit}
               startIcon={loading ? <CircularProgress size={20} /> : <AutoAwesomeIcon />}
               sx={{
                 background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
@@ -277,7 +489,12 @@ export const AIProjectForm: React.FC<AIProjectFormProps> = ({
                 px: 3,
               }}
             >
-              {loading ? 'Generating Project...' : 'Generate AI Project'}
+              {loading 
+                ? 'Generating Project...' 
+                : usageLimitInfo?.hasReachedLimit 
+                  ? 'Weekly Limit Reached' 
+                  : 'Generate AI Project'
+              }
             </Button>
           </DialogActions>
         </form>
@@ -300,7 +517,21 @@ export const AIProjectForm: React.FC<AIProjectFormProps> = ({
         onClose={() => setError(null)}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
-        <Alert onClose={() => setError(null)} severity="error" sx={{ width: '100%' }}>
+        <Alert 
+          onClose={() => setError(null)} 
+          severity="error" 
+          sx={{ 
+            width: '100%',
+            boxShadow: 3,
+            '& .MuiAlert-message': {
+              whiteSpace: 'pre-line'  // This allows line breaks in error messages
+            }
+          }}
+          variant="filled"
+        >
+          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
+            {error?.includes(':') ? 'Validation Error' : 'Error'}
+          </Typography>
           {error}
         </Alert>
       </Snackbar>

@@ -1,5 +1,11 @@
-import { ProjectPromptData } from '../types/ai';
+import { ProjectPromptData, AIUsageLimits, UsageRecord, projectPromptSchema, projectSchema } from '../types/ai';
 import { getEnvVariable } from '../lib/env';
+import { supabase } from '../lib/supabase';
+import { ZodIssue } from 'zod';
+
+// Constants for usage limits
+const MAX_PROJECTS_PER_WEEK = 10;
+const USAGE_STORAGE_KEY = 'ai_project_usage';
 
 type OpenAIResponse = {
   choices: {
@@ -22,14 +28,254 @@ export class AIService {
     }
   }
 
-  async generateProject(promptData: ProjectPromptData): Promise<string> {
-    if (!this.apiKey) {
-      throw new Error('OpenAI API key is not configured');
+  /**
+   * Checks if a user has reached their weekly limit for AI project generation
+   * Reads from both localStorage (for UI) and database (for enforcement)
+   * @param userId The ID of the user
+   * @returns An object with hasReachedLimit and remaining properties
+   */
+  async checkUsageLimit(userId: string): Promise<AIUsageLimits> {
+    try {
+      // Input validation
+      if (!userId || typeof userId !== 'string') {
+        throw new Error('Invalid user ID');
+      }
+
+      const now = new Date();
+      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      
+      // For security, verify with the database first
+      const { data: dbUsage, error } = await supabase
+        .from('ai_usage')
+        .select('created_at, project_id')
+        .eq('user_id', userId)
+        .gte('created_at', oneWeekAgo.toISOString());
+      
+      if (error) {
+        console.error('Error fetching AI usage from database:', error);
+        // Fall back to client-side tracking on error, but be conservative
+        return this.getClientSideUsage(userId);
+      }
+      
+      // Calculate usage based on database records (source of truth)
+      const projectsThisWeek = dbUsage ? dbUsage.length : 0;
+      const remaining = MAX_PROJECTS_PER_WEEK - projectsThisWeek;
+      
+      // Calculate when the limit will reset
+      let resetTime: Date | undefined;
+      if (projectsThisWeek > 0 && projectsThisWeek >= MAX_PROJECTS_PER_WEEK) {
+        // Sort by created_at to find the oldest that will expire
+        const sortedUsage = [...dbUsage].sort((a, b) => 
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+        const oldestEntry = sortedUsage[0];
+        const oldestDate = new Date(oldestEntry.created_at);
+        resetTime = new Date(oldestDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+      }
+      
+      // Also update the client-side cache to keep it in sync
+      this.syncClientUsageWithDb(userId, dbUsage);
+      
+      return {
+        hasReachedLimit: projectsThisWeek >= MAX_PROJECTS_PER_WEEK,
+        remaining,
+        resetTime
+      };
+    } catch (error) {
+      console.error('Error checking AI usage limits:', error);
+      // Fall back to client-side tracking on error, but be conservative
+      return this.getClientSideUsage(userId);
+    }
+  }
+
+  /**
+   * Gets usage data from client-side storage (less secure backup)
+   */
+  private getClientSideUsage(userId: string): AIUsageLimits {
+    // Input validation
+    if (!userId || typeof userId !== 'string') {
+      return { hasReachedLimit: true, remaining: 0 };
     }
 
-    const prompt = this.generatePrompt(promptData);
+    const now = new Date();
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    // Get stored usage data from localStorage
+    const storedUsage = this.getUserUsage(userId);
+    
+    // Filter to only include projects from the past week
+    const recentProjects = storedUsage.projects.filter(
+      (project: {timestamp: number, projectId?: string}) => project.timestamp > oneWeekAgo.getTime()
+    );
+    
+    // Calculate remaining projects
+    const projectsThisWeek = recentProjects.length;
+    const remaining = MAX_PROJECTS_PER_WEEK - projectsThisWeek;
+    
+    // Calculate when the limit will reset (when the oldest project ages out)
+    let resetTime: Date | undefined;
+    if (projectsThisWeek > 0 && projectsThisWeek >= MAX_PROJECTS_PER_WEEK) {
+      const oldestProject = recentProjects.sort((a: {timestamp: number}, b: {timestamp: number}) => a.timestamp - b.timestamp)[0];
+      resetTime = new Date(oldestProject.timestamp + 7 * 24 * 60 * 60 * 1000);
+    }
+    
+    return {
+      hasReachedLimit: projectsThisWeek >= MAX_PROJECTS_PER_WEEK,
+      remaining,
+      resetTime
+    };
+  }
+
+  /**
+   * Synchronizes client-side usage tracking with database records
+   */
+  private syncClientUsageWithDb(userId: string, dbRecords: any[] | null): void {
+    if (!dbRecords || !userId) return;
     
     try {
+      const clientUsage: UsageRecord = { userId, projects: [] };
+      
+      // Convert DB records to client format
+      dbRecords.forEach(record => {
+        clientUsage.projects.push({
+          timestamp: new Date(record.created_at).getTime(),
+          projectId: record.project_id
+        });
+      });
+      
+      // Store updated records in localStorage
+      this.saveUserUsage(clientUsage);
+    } catch (error) {
+      console.error('Error syncing client usage with DB:', error);
+    }
+  }
+
+  /**
+   * Records that a user has generated an AI project
+   * Stores in both database (for enforcement) and localStorage (for UI)
+   * @param userId The ID of the user
+   * @param projectId Optional ID of the created project
+   * @returns The updated usage record
+   */
+  async recordProjectGeneration(userId: string, projectId?: string): Promise<UsageRecord> {
+    // Input validation
+    if (!userId || typeof userId !== 'string') {
+      throw new Error('Invalid user ID');
+    }
+
+    try {
+      // First, record in the database (source of truth)
+      const { error } = await supabase
+        .from('ai_usage')
+        .insert({
+          user_id: userId,
+          project_id: projectId,
+          created_at: new Date().toISOString()
+        });
+      
+      if (error) {
+        console.error('Error recording AI usage in database:', error);
+      }
+      
+      // Also update the client-side cache
+      const usage = this.getUserUsage(userId);
+      
+      // Add the new project to the usage data
+      usage.projects.push({
+        timestamp: Date.now(),
+        projectId
+      });
+      
+      // Store the updated usage data
+      this.saveUserUsage(usage);
+      
+      return usage;
+    } catch (error) {
+      console.error('Error recording project generation:', error);
+      // Update local storage even if DB fails
+      const usage = this.getUserUsage(userId);
+      usage.projects.push({
+        timestamp: Date.now(),
+        projectId
+      });
+      this.saveUserUsage(usage);
+      return usage;
+    }
+  }
+
+  /**
+   * Gets the user's AI project generation usage data from localStorage
+   * @param userId The ID of the user
+   * @returns The user's usage record
+   */
+  private getUserUsage(userId: string): UsageRecord {
+    if (!userId) {
+      return { userId: 'anonymous', projects: [] };
+    }
+
+    try {
+      // Try to get from localStorage
+      const storageData = localStorage.getItem(USAGE_STORAGE_KEY);
+      const usageData: Record<string, UsageRecord> = storageData ? JSON.parse(storageData) : {};
+      
+      // Return the user's data or create a new record
+      return usageData[userId] || { userId, projects: [] };
+    } catch (error) {
+      console.error('Error getting usage data:', error);
+      return { userId, projects: [] };
+    }
+  }
+
+  /**
+   * Saves the user's AI project generation usage data to localStorage
+   * @param usage The user's usage record to save
+   */
+  private saveUserUsage(usage: UsageRecord): void {
+    if (!usage || !usage.userId) return;
+
+    try {
+      // Get existing data
+      const storageData = localStorage.getItem(USAGE_STORAGE_KEY);
+      const usageData: Record<string, UsageRecord> = storageData ? JSON.parse(storageData) : {};
+      
+      // Update the user's data
+      usageData[usage.userId] = usage;
+      
+      // Save back to localStorage
+      localStorage.setItem(USAGE_STORAGE_KEY, JSON.stringify(usageData));
+    } catch (error) {
+      console.error('Error saving usage data:', error);
+    }
+  }
+
+  async generateProject(promptData: ProjectPromptData): Promise<string> {
+    if (!this.apiKey) {
+      throw new Error('OpenAI API key is not configured. Please check your environment variables.');
+    }
+
+    try {
+      // Validate input data using Zod
+      const validationResult = projectPromptSchema.safeParse(promptData);
+      if (!validationResult.success) {
+        // Format validation errors into user-friendly messages
+        const errorMessages = validationResult.error.errors.map((err: ZodIssue) => {
+          const field = err.path.join('.');
+          const readableField = field
+            .replace(/([A-Z])/g, ' $1')
+            .replace(/^./, (str: string) => str.toUpperCase());
+          
+          return `${readableField}: ${err.message}`;
+        });
+        
+        throw new Error(`Please correct the following: ${errorMessages.join(', ')}`);
+      }
+      
+      const validatedData = validationResult.data;
+      
+      // Create the prompt from validated data
+      const prompt = this.generatePrompt(validatedData);
+      
+      // Call OpenAI API with sanitized inputs
       const response = await fetch(this.baseUrl, {
         method: 'POST',
         headers: {
@@ -49,14 +295,59 @@ export class AIService {
 
       if (!response.ok) {
         const errorData = await response.text();
-        throw new Error(`OpenAI API error: ${response.status} ${errorData}`);
+        const statusCode = response.status;
+        
+        // Provide user-friendly error messages based on status codes
+        if (statusCode === 401) {
+          throw new Error('OpenAI API key is invalid. Please check your API key configuration.');
+        } else if (statusCode === 429) {
+          throw new Error('OpenAI rate limit exceeded. Please try again in a few minutes.');
+        } else if (statusCode >= 500) {
+          throw new Error('OpenAI service is currently unavailable. Please try again later.');
+        }
+        
+        throw new Error(`OpenAI API error ${statusCode}: ${errorData.substring(0, 100)}`);
       }
 
       const data = await response.json() as OpenAIResponse;
+      if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
+        throw new Error('Invalid response from OpenAI API. Please try again with a different description.');
+      }
+      
       return data.choices[0].message.content;
     } catch (error) {
+      // Handle Zod validation errors
+      if (error instanceof Error && error.message.startsWith('Please correct')) {
+        throw error; // Already formatted for user display
+      }
+      
+      if (error instanceof Error && error.name === 'ZodError') {
+        console.error('Input validation error:', error);
+        // Extract validation error messages
+        try {
+          const zodError = error as unknown as { errors: { path: string[], message: string }[] };
+          const errorMessages = zodError.errors.map(err => {
+            const field = err.path.join('.');
+            return `${field}: ${err.message}`;
+          });
+          
+          throw new Error(`Invalid project data: ${errorMessages.join(', ')}`);
+        } catch (e) {
+          throw new Error('Invalid project data. Please check your input and try again.');
+        }
+      }
+      
+      // Re-throw API errors (already handled above with friendly messages)
+      if (error instanceof Error && 
+         (error.message.includes('OpenAI API error') || 
+          error.message.includes('OpenAI API key') ||
+          error.message.includes('OpenAI rate limit') ||
+          error.message.includes('OpenAI service'))) {
+        throw error;
+      }
+      
       console.error('Error calling OpenAI API:', error);
-      throw new Error('Failed to generate project with AI');
+      throw new Error('Failed to generate project with AI. Please check your inputs and try again.');
     }
   }
 
@@ -111,72 +402,112 @@ The JSON structure should be exactly like this:
 
   async parseAIResponse(response: string) {
     try {
+      // Input validation
+      if (!response || typeof response !== 'string') {
+        throw new Error('Invalid AI response: Empty or non-string response received');
+      }
+
       console.log("Raw AI response:", response);
       
       // Try to parse the entire response as JSON first
       try {
-        return JSON.parse(response);
-      } catch (e) {
-        console.log("Could not parse raw response as JSON, trying to extract JSON from text");
-      }
-      
-      // Extract JSON from the response if it's embedded in text
-      let jsonString = response;
-      
-      // Try to match JSON inside markdown code blocks
-      const jsonBlockMatch = response.match(/```(?:json)?\n([\s\S]*?)\n```/);
-      if (jsonBlockMatch && jsonBlockMatch[1]) {
-        jsonString = jsonBlockMatch[1];
-        console.log("Extracted JSON from code block:", jsonString);
-      } else {
-        // Try to find the first occurrence of { and the last occurrence of }
-        const firstBrace = response.indexOf('{');
-        const lastBrace = response.lastIndexOf('}');
+        const parsedJson = JSON.parse(response);
         
-        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-          jsonString = response.substring(firstBrace, lastBrace + 1);
-          console.log("Extracted JSON using brace matching:", jsonString);
-        }
-      }
-      
-      // Clean up potential issues in the extracted JSON
-      jsonString = jsonString
-        .replace(/[\u201C\u201D]/g, '"') // Replace fancy quotes
-        .replace(/[\u2018\u2019]/g, "'") // Replace fancy single quotes
-        .replace(/\\'/g, "'") // Replace escaped single quotes
-        .replace(/\\n/g, "\\n") // Ensure newlines are properly escaped
-        .replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3'); // Add quotes to keys without them
-      
-      console.log("Cleaned JSON string:", jsonString);
-      
-      // Try to parse the cleaned JSON
-      try {
-        const parsedData = JSON.parse(jsonString);
-        console.log("Successfully parsed JSON:", parsedData);
-        return parsedData;
-      } catch (jsonError) {
-        console.error("JSON parse error after cleaning:", jsonError);
-        
-        // Last resort - try to manually fix common issues
+        // Validate the parsed JSON against our schema
         try {
-          // Sometimes there are trailing commas in arrays or objects
-          const fixedString = jsonString
-            .replace(/,\s*]/g, ']')
-            .replace(/,\s*}/g, '}');
-          console.log("Last attempt with fixed JSON:", fixedString);
-          return JSON.parse(fixedString);
-        } catch (finalError) {
-          // Handle the unknown type by casting or checking
-          const errorMessage = finalError instanceof Error 
-            ? finalError.message 
-            : 'Unknown parsing error';
-          console.error("All JSON parsing attempts failed:", errorMessage);
-          throw new Error('Failed to parse AI response: ' + errorMessage);
+          const validationResult = projectSchema.safeParse(parsedJson);
+          
+          if (!validationResult.success) {
+            // Format validation errors for debugging
+            const errorMessages = validationResult.error.errors.map((err: ZodIssue) => {
+              const field = err.path.join('.');
+              return `${field}: ${err.message}`;
+            });
+            
+            console.error('Project validation errors:', errorMessages);
+            throw new Error(`Project validation failed: ${errorMessages.join(', ')}`);
+          }
+          
+          return validationResult.data;
+        } catch (validationError) {
+          console.error('Validation error:', validationError);
+          throw new Error('Failed to validate project data. The AI response was missing required fields or had invalid data.');
         }
+      } catch (parseError) {
+        console.error('Initial JSON parse error:', parseError);
+        
+        // If initial parse fails, try to extract JSON using regex
+        console.log("Attempting to extract JSON from text response...");
+        try {
+          // Try to find JSON-like content in the string
+          const possibleJson = this.findJsonInString(response);
+          if (possibleJson) {
+            console.log("Found potential JSON content");
+            
+            // Validate extracted JSON
+            const extractedData = JSON.parse(possibleJson);
+            const validationResult = projectSchema.safeParse(extractedData);
+            
+            if (validationResult.success) {
+              console.log("Successfully parsed and validated extracted JSON");
+              return validationResult.data;
+            } else {
+              console.error('Extracted JSON validation errors:', validationResult.error);
+              throw new Error('The AI generated incomplete project data. Please try again with a more detailed description.');
+            }
+          }
+        } catch (extractError) {
+          console.error('JSON extraction error:', extractError);
+        }
+        
+        // If all parsing attempts fail, throw a user-friendly error
+        throw new Error('Failed to parse AI response as valid project data. Please try again with a clearer project description.');
       }
     } catch (error) {
-      console.error('Error parsing AI response:', error);
-      throw new Error('Failed to parse AI response');
+      console.error('Error in parseAIResponse:', error);
+      
+      // Provide specific error messages based on error type
+      if (error instanceof Error) {
+        // Pass through formatted errors
+        if (error.message.startsWith('Invalid AI response:') ||
+            error.message.startsWith('Failed to parse') ||
+            error.message.startsWith('Project validation failed:') ||
+            error.message.includes('was missing required fields')) {
+          throw error;
+        }
+        
+        // For syntax errors in JSON parsing
+        if (error.name === 'SyntaxError') {
+          throw new Error('The AI generated an invalid JSON format. Please try again with a different project description.');
+        }
+      }
+      
+      // Generic fallback error
+      throw new Error('Failed to parse AI response. Please try again with a more specific project description.');
+    }
+  }
+  
+  /**
+   * Helper method to try to find valid JSON in a string
+   * Useful when the AI might include extra text around the JSON
+   */
+  private findJsonInString(text: string): string | null {
+    try {
+      // Try to find JSON-like content with a regex that looks for objects
+      const jsonRegex = /{[\s\S]*}/;
+      const match = text.match(jsonRegex);
+      
+      if (match && match[0]) {
+        // Clean up the potential JSON string
+        return match[0]
+          .replace(/\\n/g, "\\n") // Ensure newlines are properly escaped
+          .replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3'); // Add quotes to keys without them
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error finding JSON in string:', error);
+      return null;
     }
   }
 }

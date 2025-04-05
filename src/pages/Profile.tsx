@@ -26,7 +26,9 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { format } from 'date-fns';
 import { useAuth } from '../hooks/useAuth';
 import { projectService } from '../services/projectService';
+import { aiService } from '../services/aiService';
 import { supabase } from '../lib/supabase';
+import { AIUsageCard } from '../components/profile/AIUsageCard';
 
 const ProfileHeader = styled(Box)(({ theme }) => ({
   display: 'flex',
@@ -64,6 +66,11 @@ const Profile: React.FC = () => {
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
   const [userCreatedAt, setUserCreatedAt] = useState<string | null>(null);
   const [highPriorityTasksCount, setHighPriorityTasksCount] = useState(0);
+  const [aiUsageLimits, setAiUsageLimits] = useState<{
+    hasReachedLimit: boolean;
+    remaining: number;
+    resetTime?: Date;
+  } | null>(null);
   const [stats, setStats] = useState({
     totalProjects: 0,
     completedProjects: 0,
@@ -78,6 +85,14 @@ const Profile: React.FC = () => {
         
         // Fetch user metadata including created_at
         if (user?.id) {
+          // Check AI usage limits
+          try {
+            const limits = await aiService.checkUsageLimit(user.id);
+            setAiUsageLimits(limits);
+          } catch (error) {
+            console.error('Error checking AI usage limits:', error);
+          }
+
           const { data: userData, error: userError } = await supabase
             .from('users')
             .select('created_at')
@@ -525,11 +540,12 @@ const Profile: React.FC = () => {
               <Typography variant="body2" color="text.secondary">Member Since</Typography>
               <Typography variant="body1">{formatMemberSince()}</Typography>
             </Box>
-            <Box>
-              <Typography variant="body2" color="text.secondary">Last Login</Typography>
-              <Typography variant="body1">{format(new Date(), 'MMM d, yyyy')}</Typography>
-            </Box>
           </Paper>
+          
+          {/* AI Usage Card */}
+          <Box sx={{ mt: 3 }}>
+            <AIUsageCard usageLimits={aiUsageLimits} />
+          </Box>
         </Grid>
       </Grid>
     </Box>
