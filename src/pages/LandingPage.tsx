@@ -1,18 +1,19 @@
 import React from 'react';
-import { Box, Container, Typography, Button, Grid, Paper } from '@mui/material';
+import { Box, Container, Typography, Button, Grid, Paper, Link } from '@mui/material';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SecurityIcon from '@mui/icons-material/Security';
+import FavoriteIcon from '@mui/icons-material/Favorite';
 import AnimatedLogo from '../components/AnimatedLogo';
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <Box sx={{ minHeight: '100vh', py: 8 }}>
-      <Container maxWidth="lg">
+    <Box sx={{ minHeight: '100vh', py: 8, display: 'flex', flexDirection: 'column' }}>
+      <Container maxWidth="lg" sx={{ flexGrow: 1 }}>
         <Grid container spacing={6} alignItems="center">
           {/* Hero Section */}
           <Grid item xs={12} md={6}>
@@ -149,6 +150,27 @@ const LandingPage: React.FC = () => {
           </Grid>
         </Grid>
       </Container>
+      
+      {/* Footer */}
+      <Box 
+        component="footer" 
+        sx={{ 
+          py: 3, 
+          mt: 4, 
+          borderTop: 1, 
+          borderColor: 'divider',
+          textAlign: 'center'
+        }}
+      >
+        <Container maxWidth="lg">
+          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
+            Made with <FavoriteIcon sx={{ color: 'error.main', fontSize: '1rem' }} /> by Buildera.dev
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Contact us: <Link href="mailto:contact@buildera.dev" color="primary">contact@buildera.dev</Link>
+          </Typography>
+        </Container>
+      </Box>
     </Box>
   );
 };

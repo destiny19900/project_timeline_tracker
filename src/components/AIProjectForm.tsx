@@ -24,18 +24,13 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { projectService } from '../services/projectService';
+import { aiService } from '../services/aiService';
+import { ProjectPromptData } from '../types/ai';
 
 interface AIProjectFormProps {
   open: boolean;
   onClose: () => void;
   onSuccess?: () => void;
-}
-
-interface ProjectPromptData {
-  description: string;
-  numTasks: number;
-  startDate: string;
-  endDate: string;
 }
 
 export const AIProjectForm: React.FC<AIProjectFormProps> = ({
@@ -63,26 +58,37 @@ export const AIProjectForm: React.FC<AIProjectFormProps> = ({
     setError(null);
     
     try {
-      // Call the AI service to generate a project based on the prompt
+      // Call the OpenAI service to generate a project based on the prompt
       const aiResponse = await callAIService(promptData);
       
       // Process the AI response into a valid project structure
-      const projectData = parseAIResponse(aiResponse);
+      const projectData = await parseAIResponse(aiResponse);
+      
+      // Ensure all tasks have status "todo" and completed=false
+      if (projectData.tasks && projectData.tasks.length > 0) {
+        projectData.tasks = projectData.tasks.map(task => ({
+          ...task,
+          status: 'todo',
+          completed: false
+        }));
+      }
       
       // Save the project to the database
-      await projectService.createProject({
+      const createdProject = await projectService.createProject({
         ...projectData,
         userId: user.id
       });
       
+      console.log('AI Project created successfully:', createdProject);
+      
       setSuccess(true);
       
-      // Close the form and navigate after a short delay
-      setTimeout(() => {
-        onClose();
-        if (onSuccess) onSuccess();
-        navigate('/app/projects');
-      }, 1500);
+      // Close the form and navigate directly to the new project
+      onClose();
+      if (onSuccess) onSuccess();
+      
+      // Navigate to the specific project page
+      navigate(`/app/projects/${createdProject.id}`);
     } catch (err) {
       console.error('Error creating AI project:', err);
       setError(err instanceof Error ? err.message : 'Failed to create project with AI');
@@ -92,119 +98,17 @@ export const AIProjectForm: React.FC<AIProjectFormProps> = ({
   };
   
   const callAIService = async (promptData: ProjectPromptData): Promise<string> => {
-    // This is a placeholder for the actual AI service call
-    // In a real implementation, this would call an API endpoint
-    
-    // In this demo, we'll simulate a response with a timeout
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // Create a prompt based on the user's input
-        const prompt = generateAIPrompt(promptData);
-        
-        // For the demo, we'll return a static JSON response
-        // In production, this would be the result of an actual API call
-        resolve(mockAIResponse(promptData));
-      }, 2000);
-    });
-  };
-  
-  const generateAIPrompt = (data: ProjectPromptData): string => {
-    return `
-Create a detailed project plan based on the following description:
-"${data.description}"
-
-The project should have ${data.numTasks} tasks, start on ${data.startDate} and end by ${data.endDate}.
-
-For each task, provide:
-1. A clear, specific title
-2. A detailed description
-3. A status (todo, in_progress, completed, or blocked)
-4. A priority level (low, medium, high)
-5. Start and end dates within the project timeline
-6. Whether it's completed or not
-
-Also provide:
-1. A concise project title
-2. A comprehensive project description
-3. The overall project status (not_started, in_progress, completed, or on_hold)
-4. The project priority (low, medium, high)
-
-Format your response as JSON that can be directly used to create a project in our database.
-`;
-  };
-  
-  const mockAIResponse = (data: ProjectPromptData): string => {
-    // This is a simplified mock response
-    // In production, this would be the actual response from an AI service
-    const startDate = new Date(data.startDate);
-    const endDate = new Date(data.endDate);
-    const daySpan = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-    const taskDuration = Math.floor(daySpan / data.numTasks);
-    
-    // Generate task titles based on the description
-    const words = data.description.split(' ').filter(word => word.length > 3);
-    
-    // Create mock tasks
-    const tasks = [];
-    for (let i = 0; i < data.numTasks; i++) {
-      const taskStartDate = new Date(startDate);
-      taskStartDate.setDate(startDate.getDate() + i * taskDuration);
-      
-      const taskEndDate = new Date(taskStartDate);
-      taskEndDate.setDate(taskStartDate.getDate() + taskDuration - 1);
-      
-      // Generate a somewhat meaningful task title
-      const wordIndex = i % words.length;
-      const taskTitle = `${i + 1}. ${words[wordIndex] || 'Task'} ${i + 1}`;
-      
-      tasks.push({
-        title: taskTitle,
-        description: `This is a task that involves ${words[wordIndex] || 'work'} as part of the project.`,
-        status: 'todo',
-        priority: i === 0 ? 'high' : i === data.numTasks - 1 ? 'low' : 'medium',
-        startDate: taskStartDate.toISOString().split('T')[0],
-        endDate: taskEndDate.toISOString().split('T')[0],
-        completed: false,
-        assignedTo: null,
-        orderIndex: i,
-        parentId: null
-      });
-    }
-    
-    // Create a shorter project title by extracting keywords
-    let projectTitle = '';
-    if (words.length > 0) {
-      // Take only up to 3 words max
-      const keyWords = words.slice(0, Math.min(3, words.length));
-      projectTitle = keyWords.join(' ');
-      // Capitalize first letter
-      projectTitle = projectTitle.charAt(0).toUpperCase() + projectTitle.slice(1);
-      
-      // Keep title very short (12 chars max)
-      if (projectTitle.length > 12) {
-        projectTitle = projectTitle.substring(0, 12) + '...';
-      }
-    } else {
-      projectTitle = 'New Project';
-    }
-    
-    // Create the project structure
-    const project = {
-      title: projectTitle,
-      description: data.description,
-      status: 'not_started',
-      priority: 'medium',
-      startDate: data.startDate,
-      endDate: data.endDate,
-      tasks: tasks
-    };
-    
-    return JSON.stringify(project);
-  };
-  
-  const parseAIResponse = (response: string) => {
     try {
-      return JSON.parse(response);
+      return await aiService.generateProject(promptData);
+    } catch (error) {
+      console.error('Error calling OpenAI API:', error);
+      throw new Error('Failed to generate project with AI. Please check your API key configuration.');
+    }
+  };
+  
+  const parseAIResponse = async (response: string) => {
+    try {
+      return await aiService.parseAIResponse(response);
     } catch (error) {
       console.error('Error parsing AI response:', error);
       throw new Error('Failed to parse AI response');

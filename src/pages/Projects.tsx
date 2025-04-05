@@ -22,6 +22,7 @@ import { projectService } from '../services/projectService';
 import type { Project } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
 
 const getPriorityColor = (priority: string) => {
   switch (priority) {
@@ -177,7 +178,8 @@ export const Projects: React.FC = () => {
                   </Stack>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Typography variant="body2" color="text.secondary">
-                      {project.startDate} - {project.endDate}
+                      {project.startDate && format(new Date(project.startDate), 'MMM dd, yyyy')} - 
+                      {project.endDate && format(new Date(project.endDate), 'MMM dd, yyyy')}
                     </Typography>
                     <Button
                       variant="outlined"

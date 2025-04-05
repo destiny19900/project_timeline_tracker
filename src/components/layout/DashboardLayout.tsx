@@ -22,13 +22,9 @@ import {
   Badge,
   ListItem,
   Paper,
-  Popover,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText
+  Popover
 } from '@mui/material';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import MenuIcon from '@mui/icons-material/Menu';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -37,12 +33,12 @@ import PeopleIcon from '@mui/icons-material/People';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LightModeIcon from '@mui/icons-material/LightMode';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
+import SettingsBrightnessIcon from '@mui/icons-material/SettingsBrightness';
 import SearchIcon from '@mui/icons-material/Search';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import AddIcon from '@mui/icons-material/Add';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { useThemeContext } from '../../hooks/useTheme';
 import { useAuth } from '../../hooks/useAuth';
 import { projectService } from '../../services/projectService';
@@ -260,29 +256,45 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                   <AddIcon />
                 </IconButton>
               </Tooltip>
-              <Box component="form" onSubmit={handleSearch} sx={{ 
-                position: 'relative',
-                width: { xs: '100%', sm: '300px' },
-                maxWidth: '500px'
-              }}>
-                <IconButton 
-                  onClick={handleSearchIconClick}
+              
+              {/* Dynamic greeting and breadcrumb */}
+              <Box sx={{ display: 'flex', flexDirection: 'column', ml: 1 }}>
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary"
+                  sx={{ display: { xs: 'none', md: 'block' } }}
+                >
+                  {new Date().getHours() < 12 
+                    ? 'Good morning'
+                    : new Date().getHours() < 18
+                      ? 'Good afternoon'
+                      : 'Good evening'
+                  }, {user?.email?.split('@')[0] || 'User'}
+                </Typography>
+                <Typography 
+                  variant="subtitle1" 
                   sx={{ 
-                    position: 'absolute', 
-                    left: 8, 
-                    top: '50%', 
-                    transform: 'translateY(-50%)',
-                    color: 'text.secondary'
+                    fontWeight: 500,
+                    background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
                   }}
                 >
-                  <SearchIcon />
-                </IconButton>
-                <SearchInput 
-                  placeholder="Search projects..." 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch(e as unknown as React.FormEvent)}
-                />
+                  {location.pathname.startsWith('/app/dashboard') 
+                    ? 'Dashboard' 
+                    : location.pathname.startsWith('/app/projects/')
+                      ? 'Project Details'
+                      : location.pathname.startsWith('/app/projects')
+                        ? 'Projects'
+                        : location.pathname.startsWith('/app/team')
+                          ? 'Team'
+                          : location.pathname.startsWith('/app/settings')
+                            ? 'Settings'
+                            : location.pathname.startsWith('/app/profile')
+                              ? 'Profile'
+                              : 'Dashboard'
+                  }
+                </Typography>
               </Box>
             </Box>
 
@@ -418,12 +430,29 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                   }}
                   sx={{ mb: 1, borderRadius: 1, '&:hover': { bgcolor: 'action.hover' } }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                    <Avatar sx={{ mr: 2, bgcolor: 'primary.main', width: 32, height: 32, fontSize: '0.875rem' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', maxWidth: { xs: '100%', sm: '280px' } }}>
+                    <Avatar sx={{ mr: 1.5, bgcolor: 'primary.main', width: 28, height: 28, fontSize: '0.875rem' }}>
                       {project.title.charAt(0).toUpperCase()}
                     </Avatar>
-                    <Box sx={{ overflow: 'hidden' }}>
-                      <Typography variant="body1" noWrap>{project.title}</Typography>
+                    <Box sx={{ overflow: 'hidden', flex: 1, maxWidth: { xs: 'calc(100% - 40px)', sm: 'auto' } }}>
+                      <Typography 
+                        variant="body1" 
+                        sx={{ 
+                          display: '-webkit-box',
+                          WebkitLineClamp: 1,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          fontSize: '0.9rem',
+                          lineHeight: 1.2,
+                          maxHeight: '1.2em',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {project.title.length > 20 
+                          ? project.title.substring(0, 20) + '...'
+                          : project.title}
+                      </Typography>
                       <Typography variant="body2" color="text.secondary" noWrap>
                         {project.description || 'No description'}
                       </Typography>

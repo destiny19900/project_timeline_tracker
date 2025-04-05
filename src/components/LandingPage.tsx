@@ -2,16 +2,18 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Box, Container, Typography, Button, Grid, Stack, Paper, AppBar, Toolbar, Chip, Link } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { Timeline as TimelineIcon, Task as TaskIcon, Analytics as AnalyticsIcon, AccountCircle as AccountIcon, WorkspacePremium as PremiumIcon, GitHub as GitHubIcon } from '@mui/icons-material';
+import { Timeline as TimelineIcon, Task as TaskIcon, Analytics as AnalyticsIcon, AccountCircle as AccountIcon, WorkspacePremium as PremiumIcon, GitHub as GitHubIcon, Favorite as FavoriteIcon } from '@mui/icons-material';
 import AnimatedBackground from './AnimatedBackground';
 import kanbanImage from '../assets/kanban-management.png';
 import freeImage from '../assets/blue-free-png-5.png';
 import ThemeToggle from './ThemeToggle';
-import { useTheme } from '@mui/material/styles';
+import { useTheme as useMuiTheme } from '@mui/material/styles';
+import { useTheme } from '../hooks/useTheme';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
-  const theme = useTheme();
+  const muiTheme = useMuiTheme();
+  const { mode } = useTheme();
 
   const features = [
     {
@@ -44,7 +46,15 @@ export const LandingPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
+    <Box sx={{ 
+      minHeight: '100vh', 
+      position: 'relative', 
+      overflow: 'hidden', 
+      display: 'flex', 
+      flexDirection: 'column',
+      color: 'text.primary',
+      bgcolor: 'transparent'
+    }}>
       <AnimatedBackground />
       
       {/* Navbar */}
@@ -52,11 +62,11 @@ export const LandingPage: React.FC = () => {
         position="fixed" 
         elevation={0}
         sx={{
-          background: theme.palette.mode === 'dark' 
-            ? 'rgba(17, 25, 40, 0.8)'
+          background: mode === 'dark' 
+            ? 'rgba(15, 23, 42, 0.8)'
             : 'rgba(255, 255, 255, 0.8)',
           backdropFilter: 'blur(8px)',
-          borderBottom: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+          borderBottom: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
         }}
       >
         <Toolbar sx={{ px: { xs: 2, sm: 3 } }}>
@@ -108,7 +118,7 @@ export const LandingPage: React.FC = () => {
       </AppBar>
 
       {/* Main Content */}
-      <Container maxWidth="lg" sx={{ pt: { xs: 12, md: 16 } }}>
+      <Container maxWidth="lg" sx={{ pt: { xs: 12, md: 16 }, flexGrow: 1 }}>
         <Grid container spacing={4} alignItems="center">
           <Grid item xs={12} md={6}>
             <motion.div
@@ -213,7 +223,7 @@ export const LandingPage: React.FC = () => {
                   height: 'auto',
                   display: 'block',
                   margin: '0 auto',
-                  filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.1))',
+                  filter: mode === 'dark' ? 'brightness(0.8) contrast(1.2)' : 'drop-shadow(0 4px 20px rgba(0,0,0,0.1))',
                   transition: 'transform 0.3s ease-in-out',
                   '&:hover': {
                     transform: 'scale(1.02)',
@@ -239,7 +249,10 @@ export const LandingPage: React.FC = () => {
                     p: 4,
                     height: '100%',
                     borderRadius: 2,
-                    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1))',
+                    background: mode === 'dark'
+                      ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15))'
+                      : 'linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1))',
+                    border: mode === 'dark' ? '1px solid rgba(255,255,255,0.1)' : 'none',
                   }}
                 >
                   <Typography variant="h5" component="h3" gutterBottom>
@@ -254,6 +267,33 @@ export const LandingPage: React.FC = () => {
           ))}
         </Grid>
       </Container>
+
+      {/* Footer */}
+      <Box 
+        component="footer" 
+        sx={{ 
+          py: 3, 
+          mt: 8, 
+          borderTop: 1, 
+          borderColor: 'divider',
+          textAlign: 'center',
+          position: 'relative',
+          zIndex: 5,
+          backgroundColor: mode === 'dark' 
+            ? 'rgba(15, 23, 42, 0.8)' 
+            : 'rgba(255, 255, 255, 0.8)',
+          backdropFilter: 'blur(8px)'
+        }}
+      >
+        <Container maxWidth="lg">
+          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
+            Made with <FavoriteIcon sx={{ color: 'error.main', fontSize: '1rem' }} /> by Buildera.dev
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Contact us: <Link href="mailto:contact@buildera.dev" color="primary">contact@buildera.dev</Link>
+          </Typography>
+        </Container>
+      </Box>
     </Box>
   );
 }; 

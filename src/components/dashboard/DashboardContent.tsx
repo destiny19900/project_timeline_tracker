@@ -296,7 +296,16 @@ export const DashboardContent: React.FC = () => {
                 <TableBody>
                   {dashboardData.recentProjects.map((project) => (
                     <TableRow key={project.id}>
-                      <TableCell>{project.title}</TableCell>
+                      <TableCell sx={{ 
+                        maxWidth: { xs: '120px', sm: '180px' }, 
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {project.title.length > 15 
+                          ? project.title.substring(0, 15) + '...' 
+                          : project.title}
+                      </TableCell>
                       <TableCell>
                         <Chip
                           label={project.status}
@@ -340,7 +349,16 @@ export const DashboardContent: React.FC = () => {
                 dashboardData.recentTasks.map((task) => (
                   <TableRow key={task.id}>
                     <TableCell>{task.title}</TableCell>
-                    <TableCell>{dashboardData.recentProjects.find(p => p.id === task.projectId)?.title || '-'}</TableCell>
+                    <TableCell sx={{ 
+                      maxWidth: { xs: '80px', sm: '150px' }, 
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {(dashboardData.recentProjects.find(p => p.id === task.projectId)?.title || '-').length > 12
+                        ? (dashboardData.recentProjects.find(p => p.id === task.projectId)?.title || '-').substring(0, 12) + '...'
+                        : (dashboardData.recentProjects.find(p => p.id === task.projectId)?.title || '-')}
+                    </TableCell>
                     <TableCell>
                       <Chip
                         label={task.status}

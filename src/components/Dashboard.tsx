@@ -122,7 +122,7 @@ export const Dashboard: React.FC = () => {
   }>({
     totalProjects: 0,
     activeTasks: 0,
-    teamMembers: 1, // Hardcoded to 1 as requested
+    teamMembers: 1, // Hardcoded
     completedTasks: 0,
     recentProjects: [],
     upcomingTasks: []
@@ -402,14 +402,16 @@ export const Dashboard: React.FC = () => {
                         variant="h6" 
                         noWrap 
                         sx={{ 
-                          maxWidth: { xs: '55%', sm: '65%' },
+                          maxWidth: { xs: '180px', sm: '65%' },
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
                           fontSize: { xs: '0.9rem', sm: '1rem' }
                         }}
                       >
-                        {project.name}
+                        {project.name.length > 18 
+                          ? project.name.substring(0, 18) + '...' 
+                          : project.name}
                       </Typography>
                       <Chip
                         label={project.priority}

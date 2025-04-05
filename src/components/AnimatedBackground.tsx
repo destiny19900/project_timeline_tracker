@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { useTheme } from '../hooks/useTheme';
 
 const AnimatedBackground: React.FC = () => {
-  const { themeMode } = useTheme();
+  const { mode } = useTheme();
 
   return (
     <Box
@@ -16,7 +16,7 @@ const AnimatedBackground: React.FC = () => {
         bottom: 0,
         zIndex: -1,
         overflow: 'hidden',
-        background: themeMode === 'dark' 
+        background: mode === 'dark' 
           ? 'linear-gradient(45deg, #0f172a 0%, #1e293b 100%)'
           : 'linear-gradient(45deg, #f8fafc 0%, #f1f5f9 100%)',
       }}
@@ -37,7 +37,7 @@ const AnimatedBackground: React.FC = () => {
           left: '20%',
           width: '300px',
           height: '300px',
-          background: themeMode === 'dark'
+          background: mode === 'dark'
             ? 'radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)'
             : 'radial-gradient(circle, rgba(37, 99, 235, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%)',
           borderRadius: '50%',
@@ -60,7 +60,7 @@ const AnimatedBackground: React.FC = () => {
           right: '20%',
           width: '400px',
           height: '400px',
-          background: themeMode === 'dark'
+          background: mode === 'dark'
             ? 'radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%)'
             : 'radial-gradient(circle, rgba(124, 58, 237, 0.1) 0%, rgba(37, 99, 235, 0.1) 100%)',
           borderRadius: '50%',

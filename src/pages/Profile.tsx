@@ -357,8 +357,10 @@ const Profile: React.FC = () => {
                         ? `Task ${recentActivity[0].action}` 
                         : `Project ${recentActivity[0].action}`}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" noWrap>
-                      {recentActivity[0].projectTitle}
+                    <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: '200px' }}>
+                      {recentActivity[0].projectTitle.length > 20 
+                        ? recentActivity[0].projectTitle.substring(0, 20) + '...' 
+                        : recentActivity[0].projectTitle}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       {formatActivityTime(recentActivity[0].timestamp)}
@@ -404,18 +406,20 @@ const Profile: React.FC = () => {
                         </ListItemAvatar>
                         <ListItemText
                           primary={
-                            <Typography variant="body1" fontWeight={500}>
+                            <Typography variant="body1" fontWeight={500} noWrap sx={{ maxWidth: { xs: '220px', sm: '300px' } }}>
                               {activity.type === 'task' 
                                 ? (activity.action === 'completed' 
-                                  ? `Completed task "${activity.taskTitle}"` 
-                                  : `Updated task "${activity.taskTitle}"`) 
-                                : `Created project "${activity.projectTitle}"`}
+                                  ? `Completed task "${activity.taskTitle?.substring(0, 15)}${activity.taskTitle && activity.taskTitle.length > 15 ? '...' : ''}"` 
+                                  : `Updated task "${activity.taskTitle?.substring(0, 15)}${activity.taskTitle && activity.taskTitle.length > 15 ? '...' : ''}"`) 
+                                : `Created project "${activity.projectTitle.substring(0, 15)}${activity.projectTitle.length > 15 ? '...' : ''}"`}
                             </Typography>
                           }
                           secondary={
                             <>
-                              <Typography variant="body2" color="text.secondary">
-                                in {activity.projectTitle}
+                              <Typography variant="body2" color="text.secondary" noWrap>
+                                in {activity.projectTitle.length > 15 
+                                  ? activity.projectTitle.substring(0, 15) + '...' 
+                                  : activity.projectTitle}
                               </Typography>
                               <Typography variant="caption" color="text.secondary">
                                 {formatActivityTime(activity.timestamp)}
@@ -474,7 +478,13 @@ const Profile: React.FC = () => {
                     </Avatar>
                   </ListItemAvatar>
                   <ListItemText
-                    primary={project.title}
+                    primary={
+                      <Typography variant="body1" noWrap sx={{ maxWidth: '200px' }}>
+                        {project.title.length > 18 
+                          ? project.title.substring(0, 18) + '...' 
+                          : project.title}
+                      </Typography>
+                    }
                     secondary={
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
                         <Chip 
