@@ -201,7 +201,10 @@ export const AIProjectForm: React.FC<AIProjectFormProps> = ({
       const updatedLimits = await aiService.checkUsageLimit(user.id);
       setUsageLimitInfo(updatedLimits);
       
-      console.log('AI Project created successfully:', createdProject);
+      // Only log in development mode
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('AI Project created successfully:', createdProject);
+      }
       
       setSuccess(true);
       
@@ -212,7 +215,13 @@ export const AIProjectForm: React.FC<AIProjectFormProps> = ({
       // Navigate to the specific project page
       navigate(`/app/projects/${createdProject.id}`);
     } catch (err) {
-      console.error('Error creating AI project:', err);
+      // Log error in development, but more discreetly in production
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Error creating AI project:', err);
+      } else {
+        console.error('Error creating AI project');
+      }
+      
       if (err instanceof Error) {
         setError(err.message);
       } else if (typeof err === 'string') {
@@ -229,7 +238,11 @@ export const AIProjectForm: React.FC<AIProjectFormProps> = ({
     try {
       return await aiService.generateProject(promptData);
     } catch (error) {
-      console.error('Error calling OpenAI API:', error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Error calling OpenAI API:', error);
+      } else {
+        console.error('Error calling OpenAI API');
+      }
       
       // Extract meaningful error messages
       if (error instanceof Error) {
@@ -259,7 +272,11 @@ export const AIProjectForm: React.FC<AIProjectFormProps> = ({
     try {
       return await aiService.parseAIResponse(response);
     } catch (error) {
-      console.error('Error parsing AI response:', error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Error parsing AI response:', error);
+      } else {
+        console.error('Error parsing AI response');
+      }
       
       if (error instanceof Error) {
         if (error.message.includes('Failed to parse') || error.message.includes('Invalid AI response')) {

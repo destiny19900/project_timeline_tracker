@@ -24,6 +24,7 @@ export class AIService {
     this.apiKey = getEnvVariable('REACT_APP_OPENAI_API_KEY') || getEnvVariable('VITE_OPENAI_API_KEY');
     
     if (!this.apiKey) {
+      // In production, log this as a warning but don't expose to users
       console.warn('OpenAI API key not found in environment variables');
     }
   }
@@ -407,7 +408,10 @@ The JSON structure should be exactly like this:
         throw new Error('Invalid AI response: Empty or non-string response received');
       }
 
-      console.log("Raw AI response:", response);
+      // Only log raw response in development environment
+      if (process.env.NODE_ENV !== 'production') {
+        console.log("Raw AI response:", response);
+      }
       
       // Try to parse the entire response as JSON first
       try {
@@ -424,7 +428,10 @@ The JSON structure should be exactly like this:
               return `${field}: ${err.message}`;
             });
             
-            console.error('Project validation errors:', errorMessages);
+            // Only log detailed errors in development
+            if (process.env.NODE_ENV !== 'production') {
+              console.error('Project validation errors:', errorMessages);
+            }
             throw new Error(`Project validation failed: ${errorMessages.join(', ')}`);
           }
           
@@ -434,37 +441,51 @@ The JSON structure should be exactly like this:
           throw new Error('Failed to validate project data. The AI response was missing required fields or had invalid data.');
         }
       } catch (parseError) {
-        console.error('Initial JSON parse error:', parseError);
-        
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('Initial JSON parse error:', parseError);
+        }
+         
         // If initial parse fails, try to extract JSON using regex
-        console.log("Attempting to extract JSON from text response...");
+        if (process.env.NODE_ENV !== 'production') {
+          console.log("Attempting to extract JSON from text response...");
+        }
         try {
           // Try to find JSON-like content in the string
           const possibleJson = this.findJsonInString(response);
           if (possibleJson) {
-            console.log("Found potential JSON content");
+            if (process.env.NODE_ENV !== 'production') {
+              console.log("Found potential JSON content");
+            }
             
             // Validate extracted JSON
             const extractedData = JSON.parse(possibleJson);
             const validationResult = projectSchema.safeParse(extractedData);
             
             if (validationResult.success) {
-              console.log("Successfully parsed and validated extracted JSON");
+              if (process.env.NODE_ENV !== 'production') {
+                console.log("Successfully parsed and validated extracted JSON");
+              }
               return validationResult.data;
             } else {
-              console.error('Extracted JSON validation errors:', validationResult.error);
+              if (process.env.NODE_ENV !== 'production') {
+                console.error('Extracted JSON validation errors:', validationResult.error);
+              }
               throw new Error('The AI generated incomplete project data. Please try again with a more detailed description.');
             }
           }
         } catch (extractError) {
-          console.error('JSON extraction error:', extractError);
+          if (process.env.NODE_ENV !== 'production') {
+            console.error('JSON extraction error:', extractError);
+          }
         }
         
         // If all parsing attempts fail, throw a user-friendly error
         throw new Error('Failed to parse AI response as valid project data. Please try again with a clearer project description.');
       }
     } catch (error) {
-      console.error('Error in parseAIResponse:', error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Error in parseAIResponse:', error);
+      }
       
       // Provide specific error messages based on error type
       if (error instanceof Error) {
