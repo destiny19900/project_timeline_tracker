@@ -36,8 +36,8 @@ Buildera is a modern task management application built with React, TypeScript, a
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/buildera.git
-   cd buildera
+   git clone https://github.com/yourusername/project_timeline_tracker.git
+   project_timeline_tracker
    ```
 
 2. Install dependencies:
