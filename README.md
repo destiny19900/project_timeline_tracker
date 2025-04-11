@@ -1,124 +1,94 @@
 # Buildera - Task Management Application
 
-Buildera is a modern task management application built with React, TypeScript, and Supabase. The application features AI-assisted project generation powered by OpenAI.
-
-![Buildera Screenshot](src/assets/screenshot.png)
+A modern task management application built with React, TypeScript, and Material-UI. Features include project management, task tracking, AI-assisted project generation, and customizable themes.
 
 ## Features
 
-- **Project Management**: Create, edit, and organize projects
-- **Task Management**: Track tasks with priorities, status, and deadlines
-- **AI-Assisted Project Creation**: Generate project plans with AI
-- **Dark/Light Theme**: Customizable UI theme
-- **Responsive Design**: Works on desktop and mobile devices
-- **User Authentication**: Secure login and account management
+- Project Management
+- Task Tracking
+- AI-Assisted Project Creation
+- Customizable Themes
+- Responsive Design
+- User Authentication
 
 ## Technology Stack
 
-- **Frontend**: React, TypeScript, Material UI
-- **State Management**: Redux Toolkit
-- **Database**: Supabase (PostgreSQL)
-- **Authentication**: Supabase Auth
-- **Styling**: Emotion, Material UI
-- **API Integration**: OpenAI for AI project generation
-- **Routing**: React Router
-- **Form Validation**: Zod
+- React 18
+- TypeScript
+- Material-UI
+- Supabase
+- OpenAI API
+- Vite
+- Redux Toolkit
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ and npm/yarn
-- Supabase account
+- Node.js (v16 or higher)
+- npm or yarn
 - OpenAI API key
+- Supabase account
 
 ### Installation
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/buildera.git
-   cd buildera
-   ```
+1. Clone the repository
+```bash
+git clone https://github.com/yourusername/buildera.git
+cd buildera
+```
 
-2. Install dependencies:
-   ```bash
-   npm install
-   # or
-   yarn
-   ```
+2. Install dependencies
+```bash
+npm install
+```
 
-3. Create a `.env` file based on `.env.example`:
-   ```bash
-   cp .env.example .env
-   ```
+3. Create a `.env` file in the root directory with the following variables:
+```
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_OPENAI_API_KEY=your_openai_api_key
+```
 
-4. Add your API keys and configuration to the `.env` file:
-   ```
-   VITE_OPENAI_API_KEY=your_openai_api_key
-   VITE_SUPABASE_URL=your_supabase_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-   ```
-
-5. Start the development server:
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   ```
-
-6. Open your browser and navigate to `http://localhost:5173`
+4. Start the development server
+```bash
+npm run dev
+```
 
 ## Available Scripts
 
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
-- `npm run build:prod` - Build for production with additional optimizations
+- `npm run build:no-check` - Build without TypeScript type checking
 - `npm run lint` - Run ESLint
-- `npm run preview` - Preview production build locally
-- `npm run start` - Alias for preview command
-- `npm run deploy:vercel` - Deploy to Vercel (requires Vercel CLI)
+- `npm run preview` - Preview production build
 
 ## Deployment
 
-For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions.
 
 ## Project Structure
 
 ```
 src/
-├── assets/         # Images, icons, and other static assets
-├── components/     # Reusable UI components
-├── contexts/       # React context providers
-├── hooks/          # Custom React hooks
-├── lib/            # Utility libraries and helpers
-├── pages/          # Page components
-├── providers/      # Provider components
-├── services/       # API and service integrations
-├── store/          # Redux store configuration
-├── styles/         # Global styles and theme
-├── types/          # TypeScript type definitions
-├── App.tsx         # Main application component
-└── main.tsx        # Application entry point
+├── components/     # React components
+├── services/      # API and service functions
+├── store/         # Redux store and slices
+├── types/         # TypeScript type definitions
+├── utils/         # Utility functions
+└── App.tsx        # Main application component
 ```
 
 ## AI Project Generation
 
-Buildera includes AI-assisted project generation powered by OpenAI. This feature allows users to:
-
-1. Describe a project in natural language
-2. Specify the number of tasks and timeline
-3. Generate a complete project structure with tasks
-
-Users are limited to 10 AI-generated projects per week to manage API usage costs.
+The application includes AI-assisted project generation using OpenAI's API. Users are limited to 3 AI-generated projects per month, enforced through database tracking.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
-
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
 ## License
@@ -127,7 +97,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-- [OpenAI](https://openai.com/) for their powerful AI models
-- [Supabase](https://supabase.com/) for backend services
-- [Material UI](https://mui.com/) for the UI components
-- [Vite](https://vitejs.dev/) for the build system
+- OpenAI for the AI capabilities
+- Supabase for the backend infrastructure
+- Material-UI for the component library
