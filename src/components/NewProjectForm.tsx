@@ -16,10 +16,10 @@ import {
   CircularProgress,
   Snackbar,
   Alert,
+  Slide,
 } from '@mui/material';
 import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Project, Task } from '../types';
 import { projectService } from '../services/projectService';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -108,6 +108,11 @@ export const NewProjectForm: React.FC<NewProjectFormProps> = ({
         tasks: formData.tasks.map(task => ({
           ...task,
           assignedTo: user.id,
+          id: crypto.randomUUID(),
+          projectId: '', // Will be set by the backend
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          subtasks: []
         })),
       };
       console.log('Project data to be sent:', projectData);
@@ -195,12 +200,9 @@ export const NewProjectForm: React.FC<NewProjectFormProps> = ({
             borderRadius: '16px 16px 0 0',
           },
         }}
-        TransitionComponent={motion.div}
+        TransitionComponent={Slide}
         TransitionProps={{
-          initial: { y: '100%' },
-          animate: { y: 0 },
-          exit: { y: '100%' },
-          transition: { type: 'spring', damping: 25, stiffness: 200 }
+          in: open,
         }}
       >
         <DialogTitle>Create New Project</DialogTitle>

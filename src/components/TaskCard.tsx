@@ -10,7 +10,7 @@ import {
 } from '@mui/material';
 import { ExpandMore, ExpandLess } from '@mui/icons-material';
 import { motion } from 'framer-motion';
-import { Task } from '../store/slices/projectSlice';
+import { Task } from '../types';
 
 interface TaskCardProps {
   task: Task;
@@ -92,7 +92,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         </CardContent>
         <Collapse in={expanded} timeout="auto" unmountOnExit>
           <CardContent>
-            {task.subtasks?.map((subtask) => (
+            {task.subtasks?.map((subtask: Task) => (
               <TaskCard
                 key={subtask.id}
                 task={subtask}

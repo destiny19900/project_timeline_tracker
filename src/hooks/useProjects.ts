@@ -6,10 +6,8 @@ import {
   addProject,
   updateProject,
   deleteProject,
-  setLoading,
-  setError,
 } from '../store/slices/projectSlice';
-import projectService from '../services/projectService';
+import { projectService } from '../services/projectService';
 import type { Project, Task } from '../types';
 
 export const useProjects = () => {
@@ -30,7 +28,7 @@ export const useProjects = () => {
     try {
       setLoading(true);
       setError(null);
-      const projects = await projectService.getProjects(user!.id);
+      const projects = await projectService.getProjects();
       dispatch(setProjects(projects));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load projects');

@@ -1,9 +1,6 @@
 import { supabase } from '../lib/supabase';
-import type { Database } from '../lib/supabase';
 import type { Project, Task } from '../types';
 
-type ProjectRow = Database['public']['Tables']['projects']['Row'];
-type TaskRow = Database['public']['Tables']['tasks']['Row'];
 
 export class ProjectService {
   private mapTaskRow(row: any): Task {

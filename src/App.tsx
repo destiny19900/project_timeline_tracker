@@ -2,11 +2,11 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './store';
-import { ThemeProvider } from './providers/ThemeProvider';
+import { ThemeProvider } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
 import { AuthProvider } from './providers/AuthProvider';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LandingPage } from './components/LandingPage';
-import { AppContent } from './components/AppContent';
 import { SignUp } from './components/auth/SignUp';
 import { Login } from './components/auth/Login';
 import { ResetPassword } from './components/auth/ResetPassword';
@@ -24,11 +24,19 @@ import { ProjectDetails } from './pages/ProjectDetails';
 import Settings from './pages/Settings';
 import Profile from './pages/Profile';
 import Team from './pages/Team';
+import { ThemeContext } from './providers/ThemeProvider';
+import { lightTheme, darkTheme } from './styles/theme';
+import { AdminProtectedRoute } from './components/AdminProtectedRoute';
 
 const App: React.FC = () => {
+  const themeContext = React.useContext(ThemeContext);
+  const mode = themeContext?.mode || 'light';
+  const theme = mode === 'light' ? lightTheme : darkTheme;
+
   return (
     <Provider store={store}>
-      <ThemeProvider>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
         <AuthProvider>
           <LocalizationProvider dateAdapter={AdapterDateFns}>
             <Router>
@@ -61,29 +69,17 @@ const App: React.FC = () => {
                   <Route path="profile" element={<Profile />} />
                   <Route path="team" element={<Team />} />
                 </Route>
-                <Route
-                  path="/dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <Navigate to="/app/dashboard" replace />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/profile"
-                  element={
-                    <ProtectedRoute>
-                      <UserProfile />
-                    </ProtectedRoute>
-                  }
-                />
 
                 {/* Admin routes */}
                 <Route path="/admin/login" element={<AdminLogin />} />
-                <Route path="/admin/dashboard" element={<AdminDashboard />} />
-
-                {/* Redirect any unknown paths to home */}
-                <Route path="*" element={<Navigate to="/" replace />} />
+                <Route
+                  path="/admin/dashboard"
+                  element={
+                    <AdminProtectedRoute>
+                      <AdminDashboard />
+                    </AdminProtectedRoute>
+                  }
+                />
               </Routes>
             </Router>
           </LocalizationProvider>

@@ -12,7 +12,6 @@ import {
   MenuItem,
   Chip,
   Stack,
-  Divider,
   CircularProgress,
   Dialog,
   DialogTitle,
@@ -20,41 +19,24 @@ import {
   DialogActions,
   Alert,
   LinearProgress,
-  FormControlLabel,
   Checkbox,
   Collapse,
   Container,
 } from '@mui/material';
-import { styled } from '@mui/material/styles';
 import {
   Edit as EditIcon,
-  Save as SaveIcon,
-  Delete as DeleteIcon,
   Add as AddIcon,
   ArrowBack as ArrowBackIcon,
   Check as CheckIcon,
-  Warning as WarningIcon,
   Close as CloseIcon,
 } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { projectService } from '../services/projectService';
 import { motion } from 'framer-motion';
 import type { Project, Task } from '../types';
-import { format, isAfter, isBefore, differenceInDays } from 'date-fns';
+import { format, differenceInDays } from 'date-fns';
 
-const StatusSelect = styled(Select)(({ theme }) => ({
-  minWidth: 120,
-  '& .MuiSelect-select': {
-    padding: theme.spacing(1),
-  },
-}));
 
-const PrioritySelect = styled(Select)(({ theme }) => ({
-  minWidth: 120,
-  '& .MuiSelect-select': {
-    padding: theme.spacing(1),
-  },
-}));
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -311,7 +293,7 @@ export const ProjectDetails: React.FC = () => {
         try {
           const updatedTask = await projectService.updateTask({
             ...task,
-            status: 'completed',
+            status: 'completed' as const,
             completed: true
           });
           completedTasks.push(updatedTask);
@@ -320,7 +302,7 @@ export const ProjectDetails: React.FC = () => {
           // Continue with other tasks even if one fails
           completedTasks.push({
             ...task,
-            status: 'completed',
+            status: 'completed' as const,
             completed: true
           });
         }
@@ -366,12 +348,18 @@ export const ProjectDetails: React.FC = () => {
         ...newTask,
         projectId: project.id,
         orderIndex: project.tasks.length,
-        status: 'todo',
-        priority: 'medium',
+        status: 'todo' as const,
+        priority: 'medium' as const,
         completed: false,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        subtasks: []
+        subtasks: [],
+        title: newTask.title || '',
+        description: newTask.description || '',
+        assignedTo: null,
+        startDate: null,
+        endDate: null,
+        parentId: null
       };
 
       const createdTask = await projectService.createTask(newTaskData);
@@ -802,11 +790,12 @@ export const ProjectDetails: React.FC = () => {
                 <Select
                   value={newTask.status}
                   label="Status"
-                  onChange={(e) => setNewTask({ ...newTask, status: e.target.value })}
+                  onChange={(e) => setNewTask({ ...newTask, status: e.target.value as "todo" | "in_progress" | "completed" | "blocked" })}
                 >
                   <MenuItem value="todo">To Do</MenuItem>
                   <MenuItem value="in_progress">In Progress</MenuItem>
                   <MenuItem value="completed">Completed</MenuItem>
+                  <MenuItem value="blocked">Blocked</MenuItem>
                 </Select>
               </FormControl>
               <FormControl fullWidth>
@@ -814,7 +803,7 @@ export const ProjectDetails: React.FC = () => {
                 <Select
                   value={newTask.priority}
                   label="Priority"
-                  onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })}
+                  onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as "high" | "low" | "medium" })}
                 >
                   <MenuItem value="low">Low</MenuItem>
                   <MenuItem value="medium">Medium</MenuItem>

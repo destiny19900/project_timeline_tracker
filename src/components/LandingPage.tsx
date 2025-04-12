@@ -1,18 +1,16 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Box, Container, Typography, Button, Grid, Stack, Paper, AppBar, Toolbar, Chip, Link } from '@mui/material';
+import { Box, Container, Typography, Button, Grid, Stack, Paper, AppBar, Toolbar, Link } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { Timeline as TimelineIcon, Task as TaskIcon, Analytics as AnalyticsIcon, AccountCircle as AccountIcon, WorkspacePremium as PremiumIcon, GitHub as GitHubIcon, Favorite as FavoriteIcon } from '@mui/icons-material';
+import { Timeline as TimelineIcon, Task as TaskIcon, Analytics as AnalyticsIcon, AccountCircle as AccountIcon, GitHub as GitHubIcon, Favorite as FavoriteIcon } from '@mui/icons-material';
 import AnimatedBackground from './AnimatedBackground';
 import kanbanImage from '../assets/kanban-management.png';
 import freeImage from '../assets/blue-free-png-5.png';
 import ThemeToggle from './ThemeToggle';
-import { useTheme as useMuiTheme } from '@mui/material/styles';
 import { useTheme } from '../hooks/useTheme';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
-  const muiTheme = useMuiTheme();
   const { mode } = useTheme();
 
   const features = [

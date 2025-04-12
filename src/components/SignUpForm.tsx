@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Box,
   TextField,
   Button,
   Typography,
@@ -11,7 +10,7 @@ import {
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
-import { setUser, setToken } from '../store/slices/authSlice';
+import { setUser } from '../store/slices/authSlice';
 import authService, { SignUpData } from '../services/authService';
 
 const SignUpForm: React.FC = () => {
@@ -70,8 +69,10 @@ const SignUpForm: React.FC = () => {
     try {
       const response = await authService.signUp(formData);
       authService.setToken(response.token);
-      dispatch(setUser(response.user));
-      dispatch(setToken(response.token));
+      dispatch(setUser({
+        ...response.user,
+        createdAt: response.user.created_at
+      }));
       navigate('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred during sign up');

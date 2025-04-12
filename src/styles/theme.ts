@@ -1,24 +1,35 @@
-import { createTheme } from '@mui/material/styles';
+import { createTheme, ThemeOptions } from '@mui/material/styles';
 
-const baseTheme = {
+// Base theme configuration
+const baseTheme: ThemeOptions = {
   typography: {
     fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
     h1: {
       fontWeight: 700,
+      fontSize: '2.5rem',
     },
     h2: {
       fontWeight: 600,
+      fontSize: '2rem',
     },
     h3: {
       fontWeight: 600,
+      fontSize: '1.75rem',
     },
     h4: {
       fontWeight: 600,
+      fontSize: '1.5rem',
     },
     h5: {
       fontWeight: 500,
+      fontSize: '1.25rem',
     },
     h6: {
+      fontWeight: 500,
+      fontSize: '1rem',
+    },
+    button: {
+      textTransform: 'none',
       fontWeight: 500,
     },
   },
@@ -33,6 +44,7 @@ const baseTheme = {
           borderRadius: 8,
         },
       },
+      variants: [],
     },
     MuiCard: {
       styleOverrides: {
@@ -44,63 +56,65 @@ const baseTheme = {
     MuiPaper: {
       styleOverrides: {
         root: {
-          borderRadius: 12,
+          borderRadius: 8,
         },
       },
     },
   },
 };
 
+// Light theme
 export const lightTheme = createTheme({
   ...baseTheme,
   palette: {
     mode: 'light',
     primary: {
-      main: '#2563eb',
-      light: '#60a5fa',
-      dark: '#1d4ed8',
+      main: '#1976d2',
+      light: '#42a5f5',
+      dark: '#1565c0',
       contrastText: '#ffffff',
     },
     secondary: {
-      main: '#7c3aed',
-      light: '#a78bfa',
-      dark: '#5b21b6',
+      main: '#9c27b0',
+      light: '#ba68c8',
+      dark: '#7b1fa2',
       contrastText: '#ffffff',
     },
     background: {
-      default: '#f8fafc',
+      default: '#f5f5f5',
       paper: '#ffffff',
     },
     text: {
-      primary: '#1e293b',
-      secondary: '#64748b',
+      primary: 'rgba(0, 0, 0, 0.87)',
+      secondary: 'rgba(0, 0, 0, 0.6)',
     },
   },
 });
 
+// Dark theme
 export const darkTheme = createTheme({
   ...baseTheme,
   palette: {
     mode: 'dark',
     primary: {
-      main: '#3b82f6',
-      light: '#60a5fa',
-      dark: '#2563eb',
-      contrastText: '#ffffff',
+      main: '#90caf9',
+      light: '#e3f2fd',
+      dark: '#42a5f5',
+      contrastText: 'rgba(0, 0, 0, 0.87)',
     },
     secondary: {
-      main: '#8b5cf6',
-      light: '#a78bfa',
-      dark: '#7c3aed',
-      contrastText: '#ffffff',
+      main: '#ce93d8',
+      light: '#f3e5f5',
+      dark: '#ab47bc',
+      contrastText: 'rgba(0, 0, 0, 0.87)',
     },
     background: {
-      default: '#0f172a',
-      paper: '#1e293b',
+      default: '#121212',
+      paper: '#1e1e1e',
     },
     text: {
-      primary: '#f1f5f9',
-      secondary: '#94a3b8',
+      primary: '#ffffff',
+      secondary: 'rgba(255, 255, 255, 0.7)',
     },
   },
 }); 

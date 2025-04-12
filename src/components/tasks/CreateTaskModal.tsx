@@ -15,8 +15,6 @@ import {
   Select,
   MenuItem,
   Switch,
-  FormControlLabel,
-  Paper,
   List,
   ListItem,
   ListItemText,

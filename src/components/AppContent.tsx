@@ -14,7 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 export const AppContent: React.FC = () => {
-  const { themeMode } = useCustomTheme();
+  const { mode } = useCustomTheme();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -297,7 +297,7 @@ export const AppContent: React.FC = () => {
         PaperProps={{
           sx: {
             borderRadius: 2,
-            background: themeMode === 'dark' ? '#1e293b' : '#ffffff',
+            background: mode === 'dark' ? '#1e293b' : '#ffffff',
           }
         }}
       >

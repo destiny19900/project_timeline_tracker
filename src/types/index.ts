@@ -1,11 +1,11 @@
 export interface Task {
   id: string;
+  projectId: string;
   title: string;
   description: string;
-  projectId: string;
-  assignedTo: string | null;
   status: 'todo' | 'in_progress' | 'completed' | 'blocked';
   priority: 'low' | 'medium' | 'high';
+  assignedTo: string | null;
   startDate: string | null;
   endDate: string | null;
   orderIndex: number;
@@ -20,12 +20,29 @@ export interface Project {
   id: string;
   title: string;
   description: string;
+  status: string;
+  priority: string;
+  startDate: string;
+  endDate: string;
   userId: string;
-  status: 'not_started' | 'in_progress' | 'completed' | 'on_hold';
-  priority: 'low' | 'medium' | 'high';
-  startDate: string | null;
-  endDate: string | null;
+  tasks: Task[];
   createdAt: string;
   updatedAt: string;
-  tasks: Task[];
+}
+
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  createdAt: string;
+  created_at?: string; // For Supabase compatibility
+}
+
+export interface DashboardData {
+  activeTasks: number;
+  completedTasks: number;
+  totalProjects: number;
+  recentProjects: Project[];
+  taskDistribution: { name: string; value: number; color: string; }[];
+  recentTasks: Task[];
 } 

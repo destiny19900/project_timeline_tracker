@@ -11,7 +11,7 @@ import {
   Link,
 } from '@mui/material';
 import { motion } from 'framer-motion';
-import { supabase, supabaseAdmin } from '../../lib/supabase';
+import { supabase } from '../../lib/supabase';
 import AnimatedBackground from '../AnimatedBackground';
 
 export const SignUp: React.FC = () => {
