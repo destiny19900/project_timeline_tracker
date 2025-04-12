@@ -18,7 +18,6 @@ import {
   Avatar,
   Menu,
   MenuItem,
-  InputBase,
   Badge,
   ListItem,
   Paper,
@@ -33,8 +32,6 @@ import PeopleIcon from '@mui/icons-material/People';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LightModeIcon from '@mui/icons-material/LightMode';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
-import SettingsBrightnessIcon from '@mui/icons-material/SettingsBrightness';
-import SearchIcon from '@mui/icons-material/Search';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import AddIcon from '@mui/icons-material/Add';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
@@ -98,22 +95,6 @@ const DrawerHeader = styled('div')(({ theme }) => ({
   borderBottom: `1px solid ${theme.palette.divider}`,
 }));
 
-const SearchInput = styled(InputBase)(({ theme }) => ({
-  width: '100%',
-  borderRadius: theme.spacing(1),
-  padding: theme.spacing(1, 1, 1, 5),
-  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
-  border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
-  transition: 'all 0.2s ease-in-out',
-  '&:hover': {
-    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.07)' : 'rgba(0, 0, 0, 0.05)',
-  },
-  '&:focus-within': {
-    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.07)',
-    boxShadow: '0 0 0 2px rgba(0, 123, 255, 0.25)',
-  },
-}));
-
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/app/dashboard' },
   { text: 'New Project', icon: <AddIcon />, path: '/app/new-project' },
@@ -131,8 +112,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
   const location = useLocation();
   const { user, signOut } = useAuth();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults] = useState<any[]>([]);
   const [searchAnchorEl, setSearchAnchorEl] = useState<null | HTMLElement>(null);
   const [overdueProjects, setOverdueProjects] = useState<any[]>([]);
   const [notificationAnchorEl, setNotificationAnchorEl] = useState<null | HTMLElement>(null);
@@ -182,33 +162,6 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
     navigate('/');
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-    
-    // Simple search: Find projects with matching title or description
-    const searchProjects = async () => {
-      try {
-        const projects = await projectService.getProjects();
-        const results = projects.filter(project => 
-          project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (project.description && project.description.toLowerCase().includes(searchQuery.toLowerCase()))
-        );
-        setSearchResults(results);
-      } catch (error) {
-        console.error('Error searching projects:', error);
-      }
-    };
-    
-    searchProjects();
-  };
-
-  const handleSearchIconClick = (event: React.MouseEvent<HTMLElement>) => {
-    setSearchAnchorEl(event.currentTarget);
-    if (searchQuery.trim()) {
-      handleSearch(event as unknown as React.FormEvent);
-    }
-  };
 
   const handleNotificationsClick = (event: React.MouseEvent<HTMLElement>) => {
     setNotificationAnchorEl(event.currentTarget);

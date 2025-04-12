@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Paper, Stack, LinearProgress, Chip, IconButton, Tooltip, Avatar, AvatarGroup, Grid, Container, CircularProgress, Switch, FormControlLabel, Zoom } from '@mui/material';
+import { Box, Typography, Paper, Stack, LinearProgress, Chip, IconButton, Avatar, Grid, Container, CircularProgress, Switch, FormControlLabel, Zoom } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import { styled } from '@mui/material/styles';
 import { Add as AddIcon, Bolt as AIIcon } from '@mui/icons-material';
@@ -179,7 +178,6 @@ export const Dashboard: React.FC = () => {
           });
         
         // Get upcoming tasks based on endDate (up to 3)
-        const now = new Date();
         const upcomingTasks = [...allTasks]
           .filter(task => task.status !== 'completed' && task.endDate)
           .sort((a, b) => {

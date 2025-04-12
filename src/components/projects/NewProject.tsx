@@ -17,6 +17,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  SelectChangeEvent,
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import AnimatedBackground from '../AnimatedBackground';
@@ -33,7 +34,9 @@ export const NewProject: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showSignUpPrompt, setShowSignUpPrompt] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | { name?: string; value: unknown }>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,

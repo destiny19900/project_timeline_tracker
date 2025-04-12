@@ -3,7 +3,6 @@ import { Container, Grid, Paper, Typography } from '@mui/material';
 import { UserList } from '../components/UserList';
 import { useThemeContext } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 interface UserProfile {
@@ -14,7 +13,6 @@ interface UserProfile {
 export const Dashboard: React.FC = () => {
   useThemeContext();
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {

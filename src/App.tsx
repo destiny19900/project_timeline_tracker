@@ -10,7 +10,6 @@ import { LandingPage } from './components/LandingPage';
 import { SignUp } from './components/auth/SignUp';
 import { Login } from './components/auth/Login';
 import { ResetPassword } from './components/auth/ResetPassword';
-import { UserProfile } from './components/user/UserProfile';
 import { NewProject } from './components/projects/NewProject';
 import { AuthCallback } from './components/auth/AuthCallback';
 import { DashboardLayout } from './components/layout/DashboardLayout';

@@ -2,10 +2,8 @@ import React, { useState } from 'react';
 import { 
   Box, 
   Typography, 
-  Paper, 
   Switch, 
   FormControlLabel,
-  Divider,
   Button,
   Alert,
   Snackbar,

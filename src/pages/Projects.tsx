@@ -1,16 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
   Box,
-  Container,
   Typography,
   Grid,
-  Card,
-  CardContent,
-  CardActions,
   Button,
   Chip,
   CircularProgress,
-  Alert,
   Paper,
   Stack,
 } from '@mui/material';
@@ -24,31 +19,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 
-const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case 'high':
-      return 'error';
-    case 'medium':
-      return 'warning';
-    case 'low':
-      return 'success';
-    default:
-      return 'default';
-  }
-};
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'completed':
-      return 'success';
-    case 'in_progress':
-      return 'primary';
-    case 'on_hold':
-      return 'warning';
-    default:
-      return 'default';
-  }
-};
 
 const ProjectCard = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -72,7 +43,7 @@ const ProjectCard = styled(Paper)(({ theme }) => ({
 
 export const Projects: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -94,17 +65,6 @@ export const Projects: React.FC = () => {
     fetchProjects();
   }, []);
 
-  const handleProjectCreate = async (project: Project) => {
-    try {
-      await projectService.createProject(project);
-      const updatedProjects = await projectService.getProjects();
-      setProjects(updatedProjects);
-      setIsNewProjectFormOpen(false);
-    } catch (err) {
-      console.error('Failed to create project:', err);
-      setError('Failed to create project');
-    }
-  };
 
   if (loading) {
     return (

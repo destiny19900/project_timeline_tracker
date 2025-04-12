@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, Paper, Checkbox, Grid, useTheme } from '@mui/material';
+import { Box, Typography, Paper, Checkbox, Grid } from '@mui/material';
 import { styled } from '@mui/material/styles';
 
 const TaskCard = styled(Paper)(({ theme }) => ({
@@ -19,7 +19,6 @@ export const ProjectTimeline: React.FC<{ project: any; onTaskToggle: (taskId: st
   project,
   onTaskToggle,
 }) => {
-  const theme = useTheme();
 
   return (
     <Box sx={{ width: '100%' }}>
